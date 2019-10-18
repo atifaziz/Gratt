@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <VersionPrefix>1.0.0</VersionPrefix>
-    <TargetFrameworks>netstandard2.0;netstandard1.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard1.3;netstandard1.0</TargetFrameworks>
     <LangVersion>8</LangVersion>
     <Copyright>Copyright &#169; 2019 Atif Aziz. All rights reserved.</Copyright>
     <Authors>Atif Aziz</Authors>
@@ -18,6 +18,14 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.0'">
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.3'">
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+    <PackageReference Include="System.Runtime.Serialization.Formatters" Version="4.3.0" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard1.0'">
+    <DefineConstants>$(DefineConstants);PRATT_NO_SERIALIZABLE</DefineConstants>
+  </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\bin\Debug\</OutputPath>

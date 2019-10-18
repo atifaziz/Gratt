@@ -99,7 +99,7 @@ namespace PrattParsing
         {
             var read = TryRead();
             if (!read.HasValue)
-                throw new Exception("Unexpected end of input.");
+                throw new ParseException("Unexpected end of input.");
             var (kind, token) = read.Value;
             var prefix = _prefixFunction(kind);
             var left = prefix(token, this);
@@ -189,5 +189,15 @@ namespace PrattParsing
             (true, _, _) => throw new InvalidOperationException(),
             _ => (true, kind, token)
         };
+    }
+
+    #if !PRATT_NO_SERIALIZABLE
+    [Serializable]
+    #endif
+    partial class ParseException : Exception
+    {
+        public ParseException() {}
+        public ParseException(string message) : base(message) {}
+        public ParseException(string message, Exception inner) : base(message, inner) {}
     }
 }
