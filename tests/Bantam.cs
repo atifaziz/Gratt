@@ -33,8 +33,8 @@ namespace Bantam
     using System.Text;
     using PrattParsing;
     using static TokenType;
-    using PrefixParselet = System.Func<Token, PrattParsing.Parser<TokenType, Token, int, Expression>, Expression>;
-    using InfixParselet = System.Func<Token, Expression, PrattParsing.Parser<TokenType, Token, int, Expression>, Expression>;
+    using PrefixParselet = System.Func<Token, PrattParsing.Parser<System.ValueTuple, TokenType, Token, int, Expression>, Expression>;
+    using InfixParselet = System.Func<Token, Expression, PrattParsing.Parser<System.ValueTuple, TokenType, Token, int, Expression>, Expression>;
 
     /// <summary>
     /// Defines the different precedence levels used by the infix parsers. These

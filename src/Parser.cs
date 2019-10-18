@@ -18,55 +18,82 @@ namespace PrattParsing
 {
     using System;
     using System.Collections.Generic;
+    using Unit = System.ValueTuple;
 
     static partial class Parser
     {
         public static TResult
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence,
-                Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                Func<TKind, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
-            Parse(initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default, prefixFunction, infixFunction, lexer);
+            Parse(default, initialPrecedence, prefixFunction, infixFunction, lexer);
 
         public static TResult
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
-                Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                Func<TKind, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                IEnumerable<(TKind, TToken)> lexer) =>
+            Parse(default, initialPrecedence, precedenceComparer, kindEqualityComparer, prefixFunction,
+                  infixFunction, lexer);
+
+        public static TResult
+            Parse<TState, TKind, TToken, TPrecedence, TResult>(
+                TState state,
+                TPrecedence initialPrecedence,
+                Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                IEnumerable<(TKind, TToken)> lexer) =>
+            Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
+                  prefixFunction, infixFunction, lexer);
+
+        public static TResult
+            Parse<TState, TKind, TToken, TPrecedence, TResult>(
+                TState state,
+                TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
+                IEqualityComparer<TKind> kindEqualityComparer,
+                Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer)
         {
             var parser =
-                new Parser<TKind, TToken, TPrecedence, TResult>(precedenceComparer,
-                                                                kindEqualityComparer,
-                                                                prefixFunction, infixFunction,
-                                                                lexer.GetEnumerator());
+                new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
+                                                                        precedenceComparer,
+                                                                        kindEqualityComparer,
+                                                                        prefixFunction, infixFunction,
+                                                                        lexer.GetEnumerator());
             return parser.Parse(initialPrecedence);
         }
     }
 
-    partial class Parser<TKind, TToken, TPrecedence, TResult>
+    partial class Parser<TState, TKind, TToken, TPrecedence, TResult>
     {
         readonly IComparer<TPrecedence> _precedenceComparer;
         readonly IEqualityComparer<TKind> _tokenEqualityComparer;
-        readonly Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
-        readonly Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> _infixFunction;
+        readonly Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
+        readonly Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> _infixFunction;
         (bool, TKind, TToken) _next;
         IEnumerator<(TKind, TToken)> _enumerator;
 
-        internal Parser(IComparer<TPrecedence> precedenceComparer,
+        internal Parser(TState state,
+                        IComparer<TPrecedence> precedenceComparer,
                         IEqualityComparer<TKind> tokenEqualityComparer,
-                        Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                        Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                        Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                        Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
                         IEnumerator<(TKind, TToken)> lexer)
         {
+            State = state;
             _precedenceComparer = precedenceComparer;
             _tokenEqualityComparer = tokenEqualityComparer;
             _prefixFunction = prefixFunction;
             _infixFunction = infixFunction;
             _enumerator = lexer;
         }
+
+        public TState State { get; set; }
 
         public TResult Parse(TPrecedence precedence)
         {
