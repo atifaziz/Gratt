@@ -498,12 +498,13 @@ namespace Bantam
                 _infixes.Add(type, (precedence, prefix));
 
             public PrefixParselet Prefix(TokenType type) => _prefixes[type];
-            public (bool, int, InfixParselet) Infix(TokenType type)
+
+            public (int, InfixParselet)? Infix(TokenType type)
             {
                 if (!_infixes.TryGetValue(type, out var v))
                     return default;
                 var (precedence, infix) = v;
-                return(true, precedence, infix);
+                return (precedence, infix);
             }
 
             IEnumerator IEnumerable.GetEnumerator() =>

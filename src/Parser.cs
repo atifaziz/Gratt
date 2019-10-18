@@ -26,7 +26,7 @@ namespace PrattParsing
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence,
                 Func<TKind, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
             Parse(default, initialPrecedence, prefixFunction, infixFunction, lexer);
 
@@ -35,7 +35,7 @@ namespace PrattParsing
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
                 Func<TKind, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
             Parse(default, initialPrecedence, precedenceComparer, kindEqualityComparer, prefixFunction,
                   infixFunction, lexer);
@@ -45,7 +45,7 @@ namespace PrattParsing
                 TState state,
                 TPrecedence initialPrecedence,
                 Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
             Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
                   prefixFunction, infixFunction, lexer);
@@ -56,7 +56,7 @@ namespace PrattParsing
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
                 Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer)
         {
             var parser =
@@ -74,7 +74,7 @@ namespace PrattParsing
         readonly IComparer<TPrecedence> _precedenceComparer;
         readonly IEqualityComparer<TKind> _tokenEqualityComparer;
         readonly Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
-        readonly Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> _infixFunction;
+        readonly Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> _infixFunction;
         (bool, TKind, TToken) _next;
         IEnumerator<(TKind, TToken)> _enumerator;
 
@@ -82,7 +82,7 @@ namespace PrattParsing
                         IComparer<TPrecedence> precedenceComparer,
                         IEqualityComparer<TKind> tokenEqualityComparer,
                         Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                        Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                        Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                         IEnumerator<(TKind, TToken)> lexer)
         {
             State = state;
@@ -111,7 +111,7 @@ namespace PrattParsing
                 (kind, token) = peeked.Value;
                 switch (_infixFunction(kind))
                 {
-                    case var (someInfix, p, infix) when someInfix && _precedenceComparer.Compare(precedence, p) < 0:
+                    case var (p, infix) when _precedenceComparer.Compare(precedence, p) < 0:
                         TryRead();
                         left = infix(token, left, this);
                         peeked = TryPeek();
