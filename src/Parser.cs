@@ -77,17 +77,17 @@ namespace PrattParsing
             var prefix = _prefixFunction(kind);
             var left = prefix(token, this);
 
-            var sought = TrySeek();
+            var peeked = TryPeek();
 
-            while (sought.HasValue)
+            while (peeked.HasValue)
             {
-                (kind, token) = sought.Value;
+                (kind, token) = peeked.Value;
                 switch (_infixFunction(kind))
                 {
                     case var (someInfix, p, infix) when someInfix && _precedenceComparer.Compare(precedence, p) < 0:
                         TryRead();
                         left = infix(token, left, this);
-                        sought = TrySeek();
+                        peeked = TryPeek();
                         break;
                     default:
                         return left;
@@ -99,7 +99,7 @@ namespace PrattParsing
 
         public bool Match(TKind kind)
         {
-            switch (TrySeek())
+            switch (TryPeek())
             {
                 case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Read(); return true;
                 default: return false;
@@ -108,7 +108,7 @@ namespace PrattParsing
 
         public (TKind, TToken) Read()
         {
-            switch (TrySeek())
+            switch (TryPeek())
             {
                 case var (kind, token): TryRead(); return (kind, token);
                 default: throw new InvalidOperationException();
@@ -117,14 +117,14 @@ namespace PrattParsing
 
         public TToken Read(TKind kind, Func<TKind, (TKind, TToken)?, Exception> onError)
         {
-            switch (TrySeek())
+            switch (TryPeek())
             {
                 case var (k, t) when _tokenEqualityComparer.Equals(k, kind): Read(); return t;
-                case var sought: throw onError(kind, sought);
+                case var peeked: throw onError(kind, peeked);
             }
         }
 
-        public (TKind, TToken)? TrySeek()
+        public (TKind, TToken)? TryPeek()
         {
             switch (TryRead())
             {
