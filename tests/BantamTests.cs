@@ -23,7 +23,7 @@
 // This is a C# version of Bantam tests found at:
 // https://github.com/munificent/bantam/tree/05276a6f24657630b86a3edeae0a81233512c16d/src/com/stuffwithstuff/bantam
 
-namespace PrattParsing.Tests
+namespace Gratt.Tests
 {
     using System.Linq;
     using System.Text;

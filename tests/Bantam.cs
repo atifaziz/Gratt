@@ -31,10 +31,10 @@ namespace Bantam
     using System.Collections.Immutable;
     using System.Linq;
     using System.Text;
-    using PrattParsing;
+    using Gratt;
     using static TokenType;
-    using PrefixParselet = System.Func<Token, PrattParsing.Parser<System.ValueTuple, TokenType, Token, int, Expression>, Expression>;
-    using InfixParselet = System.Func<Token, Expression, PrattParsing.Parser<System.ValueTuple, TokenType, Token, int, Expression>, Expression>;
+    using PrefixParselet = System.Func<Token, Gratt.Parser<System.ValueTuple, TokenType, Token, int, Expression>, Expression>;
+    using InfixParselet = System.Func<Token, Expression, Gratt.Parser<System.ValueTuple, TokenType, Token, int, Expression>, Expression>;
 
     /// <summary>
     /// Defines the different precedence levels used by the infix parsers. These

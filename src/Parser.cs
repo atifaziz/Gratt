@@ -14,7 +14,7 @@
 //
 #endregion
 
-namespace PrattParsing
+namespace Gratt
 {
     using System;
     using System.Collections.Generic;

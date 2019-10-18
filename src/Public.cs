@@ -1,4 +1,4 @@
-namespace PrattParsing
+namespace Gratt
 {
     public partial interface ILexer<TKind, TToken> {}
     public partial class Parser {}

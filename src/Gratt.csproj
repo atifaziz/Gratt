@@ -7,7 +7,7 @@
     <Copyright>Copyright &#169; 2019 Atif Aziz. All rights reserved. Portions Copyright &#169; 2011 Robert Nystrom.</Copyright>
     <Authors>Atif Aziz</Authors>
     <Owners>Atif Aziz</Owners>
-    <PackageProjectUrl>https://github.com/atifaziz/PrattParsing</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/atifaziz/Gratt</PackageProjectUrl>
     <PackageTags>pratt;parser;tdop;precedence;recursive</PackageTags>
     <PackageLicenseFile>COPYING.txt</PackageLicenseFile>
     <PackageOutputPath>..\dist</PackageOutputPath>
