@@ -19,152 +19,75 @@ namespace PrattParsing
     using System;
     using System.Collections.Generic;
 
-    partial interface ILexer<TKind, TToken>
-    {
-        (bool, TKind, TToken) Read();
-        void Unread(TKind kind, TToken token);
-    }
-
-    static partial class LexerExtensions
-    {
-        public static bool TryRead<TKind, TToken>(this ILexer<TKind, TToken> lexer, out TKind kind, out TToken token)
-        {
-            bool read;
-            (read, kind, token) = lexer.Read();
-            return read;
-        }
-
-        public static bool TrySeek<TKind, TToken>(this ILexer<TKind, TToken> lexer, out TKind kind, out TToken token)
-        {
-            if (!lexer.TryRead(out kind, out token))
-                return false;
-            lexer.Unread(kind, token);
-            return true;
-        }
-
-        public static (bool, TKind, TToken) Seek<TKind, TToken>(this ILexer<TKind, TToken> lexer)
-        {
-            var (read, kind, token) = lexer.Read();
-            if (read)
-                lexer.Unread(kind, token);
-            return (read, kind, token);
-        }
-    }
-
-    static partial class Lexer
-    {
-        /// <summary>
-        /// Creates a lexer implementation on top of an
-        /// <see cref="IEnumerator{T}"/> that supports a single unread between
-        /// reads.
-        /// </summary>
-
-        public static ILexer<TKind, TToken> Create<TKind, TToken>(IEnumerator<(TKind, TToken)> enumerator) =>
-            new SingletonLexer<TKind, TToken>(enumerator);
-
-        sealed class SingletonLexer<TKind, TToken> : ILexer<TKind, TToken>
-        {
-            (bool, TKind, TToken) _next;
-            IEnumerator<(TKind, TToken)> _enumerator;
-
-            public SingletonLexer(IEnumerator<(TKind, TToken)> enumerator) =>
-                _enumerator = enumerator;
-
-            public (bool, TKind, TToken) Read()
-            {
-                switch (_next)
-                {
-                    case (true, var kind, var token):
-                        _next = default;
-                        return (true, kind, token);
-                    default:
-                        switch (_enumerator)
-                        {
-                            case null: return default;
-                            case var e:
-                                if (!e.MoveNext())
-                                {
-                                    _enumerator.Dispose();
-                                    _enumerator = null;
-                                    return default;
-                                }
-                                var (kind, token) = e.Current;
-                                return (true, kind, token);
-                        }
-                }
-            }
-
-            public void Unread(TKind kind, TToken token) => _next = _next switch
-            {
-                (true, _, _) => throw new InvalidOperationException(),
-                _ => (true, kind, token)
-            };
-        }
-    }
-
     static partial class Parser
     {
         public static TResult
-            Parse<TLexer, TKind, TToken, TPrecedence, TResult>(
+            Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence,
-                Func<TKind, Func<TToken, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
-                TLexer lexer)
-                where TLexer : ILexer<TKind, TToken> =>
+                Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                IEnumerable<(TKind, TToken)> lexer) =>
             Parse(initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default, prefixFunction, infixFunction, lexer);
 
         public static TResult
-            Parse<TLexer, TKind, TToken, TPrecedence, TResult>(
+            Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
-                Func<TKind, Func<TToken, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
-                TLexer lexer)
-                where TLexer : ILexer<TKind, TToken> =>
-            new Parser<TLexer, TKind, TToken, TPrecedence, TResult>(precedenceComparer, kindEqualityComparer, prefixFunction, infixFunction, lexer).Parse(initialPrecedence);
+                Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                IEnumerable<(TKind, TToken)> lexer)
+        {
+            var parser =
+                new Parser<TKind, TToken, TPrecedence, TResult>(precedenceComparer,
+                                                                kindEqualityComparer,
+                                                                prefixFunction, infixFunction,
+                                                                lexer.GetEnumerator());
+            return parser.Parse(initialPrecedence);
+        }
     }
 
-    partial class Parser<TLexer, TKind, TToken, TPrecedence, TResult>
-        where TLexer : ILexer<TKind, TToken>
+    partial class Parser<TKind, TToken, TPrecedence, TResult>
     {
         readonly IComparer<TPrecedence> _precedenceComparer;
         readonly IEqualityComparer<TKind> _tokenEqualityComparer;
-        readonly Func<TKind, Func<TToken, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
-        readonly Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>)> _infixFunction;
+        readonly Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
+        readonly Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> _infixFunction;
+        (bool, TKind, TToken) _next;
+        IEnumerator<(TKind, TToken)> _enumerator;
 
         internal Parser(IComparer<TPrecedence> precedenceComparer,
                         IEqualityComparer<TKind> tokenEqualityComparer,
-                        Func<TKind, Func<TToken, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                        Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TLexer, TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
-                        TLexer lexer)
+                        Func<TKind, Func<TToken, Parser<TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                        Func<TKind, (bool, TPrecedence, Func<TToken, TResult, Parser<TKind, TToken, TPrecedence, TResult>, TResult>)> infixFunction,
+                        IEnumerator<(TKind, TToken)> lexer)
         {
             _precedenceComparer = precedenceComparer;
             _tokenEqualityComparer = tokenEqualityComparer;
             _prefixFunction = prefixFunction;
             _infixFunction = infixFunction;
-            Lexer = lexer;
+            _enumerator = lexer;
         }
-
-        public TLexer Lexer { get; }
 
         public TResult Parse(TPrecedence precedence)
         {
-            var (some, (kind, token)) = Read();
-            if (!some)
+            var read = Read();
+            if (!read.HasValue)
                 throw new Exception("Unexpected end of input.");
+            var (kind, token) = read.Value;
             var prefix = _prefixFunction(kind);
             var left = prefix(token, this);
 
-            (some, (kind, token)) = Seek();
+            var sought = Seek();
 
-            while (some)
+            while (sought.HasValue)
             {
+                (kind, token) = sought.Value;
                 switch (_infixFunction(kind))
                 {
                     case var (someInfix, p, infix) when someInfix && _precedenceComparer.Compare(precedence, p) < 0:
                         Read();
                         left = infix(token, left, this);
-                        (some, (kind, token)) = Seek();
+                        sought = Seek();
                         break;
                     default:
                         return left;
@@ -176,42 +99,69 @@ namespace PrattParsing
 
         public bool Match(TKind kind)
         {
-            var (some, (k, _)) = Seek();
-            if (!some || !_tokenEqualityComparer.Equals(k, kind))
-                return false;
-            Consume();
-            return true;
+            switch (Seek())
+            {
+                case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Consume(); return true;
+                default: return false;
+            }
         }
 
         public TToken Consume()
         {
-            var (some, (_, token)) = Seek();
-            if (!some)
-                throw new InvalidOperationException();
-            Read();
-            return token;
+            switch (Seek())
+            {
+                case var (_, token): Read(); return token;
+                default: throw new InvalidOperationException();
+            }
         }
 
-        public void Consume(TKind kind, Func<TKind, bool, TKind, TLexer, Exception> onError)
+        public void Consume(TKind kind, Func<TKind, bool, TKind, Exception> onError)
         {
-            var (some, (k, _)) = Seek();
-            if (!some)
-                throw onError(kind, false, default, Lexer);
-            if (!_tokenEqualityComparer.Equals(k, kind))
-                throw onError(kind, true, k, Lexer);
-            Consume();
+            switch (Seek())
+            {
+                case null: throw onError(kind, false, default);
+                case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Consume(); break;
+                case var (k, _): throw onError(kind, true, k);
+            }
         }
 
-        (bool, (TKind, TToken)) Read()
+        public (TKind, TToken)? Seek()
         {
-            var (read, kind, token) = Lexer.Read();
-            return (read, (kind, token));
+            switch (Read())
+            {
+                case var (kind, token): Unread(kind, token); return (kind, token);
+                default: return default;
+            }
         }
 
-        (bool, (TKind, TToken)) Seek()
+        public (TKind, TToken)? Read()
         {
-            var (sought, kind, token) = Lexer.Seek();
-            return (sought, (kind, token));
+            switch (_next)
+            {
+                case (true, var kind, var token):
+                    _next = default;
+                    return (kind, token);
+                default:
+                    switch (_enumerator)
+                    {
+                        case null: return default;
+                        case var e:
+                            if (!e.MoveNext())
+                            {
+                                _enumerator.Dispose();
+                                _enumerator = null;
+                                return default;
+                            }
+                            var (kind, token) = e.Current;
+                            return (kind, token);
+                    }
+            }
         }
+
+        void Unread(TKind kind, TToken token) => _next = _next switch
+        {
+            (true, _, _) => throw new InvalidOperationException(),
+            _ => (true, kind, token)
+        };
     }
 }

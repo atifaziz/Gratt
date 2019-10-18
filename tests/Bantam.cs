@@ -33,8 +33,8 @@ namespace Bantam
     using System.Text;
     using PrattParsing;
     using static TokenType;
-    using PrefixParselet = System.Func<Token, PrattParsing.Parser<PrattParsing.ILexer<TokenType, Token>, TokenType, Token, int, Expression>, Expression>;
-    using InfixParselet = System.Func<Token, Expression, PrattParsing.Parser<PrattParsing.ILexer<TokenType, Token>, TokenType, Token, int, Expression>, Expression>;
+    using PrefixParselet = System.Func<Token, PrattParsing.Parser<TokenType, Token, int, Expression>, Expression>;
+    using InfixParselet = System.Func<Token, Expression, PrattParsing.Parser<TokenType, Token, int, Expression>, Expression>;
 
     /// <summary>
     /// Defines the different precedence levels used by the infix parsers. These
@@ -452,7 +452,8 @@ namespace Bantam
             Parser.Parse(0,
                 (TokenType type) => Spec.Instance.Prefix(type),
                 (TokenType type) => Spec.Instance.Infix(type),
-                PrattParsing.Lexer.Create(Lexer.Lex(source).Select(t => (t.Type, t)).GetEnumerator()));
+                from t in Lexer.Lex(source)
+                select (t.Type, t));
 
         sealed class Spec : IEnumerable
         {
