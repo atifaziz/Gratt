@@ -70,14 +70,14 @@ namespace PrattParsing
 
         public TResult Parse(TPrecedence precedence)
         {
-            var read = Read();
+            var read = TryRead();
             if (!read.HasValue)
                 throw new Exception("Unexpected end of input.");
             var (kind, token) = read.Value;
             var prefix = _prefixFunction(kind);
             var left = prefix(token, this);
 
-            var sought = Seek();
+            var sought = TrySeek();
 
             while (sought.HasValue)
             {
@@ -85,9 +85,9 @@ namespace PrattParsing
                 switch (_infixFunction(kind))
                 {
                     case var (someInfix, p, infix) when someInfix && _precedenceComparer.Compare(precedence, p) < 0:
-                        Read();
+                        TryRead();
                         left = infix(token, left, this);
-                        sought = Seek();
+                        sought = TrySeek();
                         break;
                     default:
                         return left;
@@ -99,42 +99,41 @@ namespace PrattParsing
 
         public bool Match(TKind kind)
         {
-            switch (Seek())
+            switch (TrySeek())
             {
-                case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Consume(); return true;
+                case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Read(); return true;
                 default: return false;
             }
         }
 
-        public TToken Consume()
+        public (TKind, TToken) Read()
         {
-            switch (Seek())
+            switch (TrySeek())
             {
-                case var (_, token): Read(); return token;
+                case var (kind, token): TryRead(); return (kind, token);
                 default: throw new InvalidOperationException();
             }
         }
 
-        public void Consume(TKind kind, Func<TKind, bool, TKind, Exception> onError)
+        public TToken Read(TKind kind, Func<TKind, (TKind, TToken)?, Exception> onError)
         {
-            switch (Seek())
+            switch (TrySeek())
             {
-                case null: throw onError(kind, false, default);
-                case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Consume(); break;
-                case var (k, _): throw onError(kind, true, k);
+                case var (k, t) when _tokenEqualityComparer.Equals(k, kind): Read(); return t;
+                case var sought: throw onError(kind, sought);
             }
         }
 
-        public (TKind, TToken)? Seek()
+        public (TKind, TToken)? TrySeek()
         {
-            switch (Read())
+            switch (TryRead())
             {
                 case var (kind, token): Unread(kind, token); return (kind, token);
                 default: return default;
             }
         }
 
-        public (TKind, TToken)? Read()
+        public (TKind, TToken)? TryRead()
         {
             switch (_next)
             {

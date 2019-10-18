@@ -378,7 +378,7 @@ namespace Bantam
                 if (!parser.Match(RightParen))
                 {
                     do { args.Add(parser.Parse(0)); } while (parser.Match(Comma));
-                    parser.Consume(RightParen, delegate { throw new ParseException("Expected ')'."); });
+                    parser.Read(RightParen, delegate { throw new ParseException("Expected ')'."); });
                 }
 
                 return new CallExpression(left, args.ToImmutable());
@@ -392,7 +392,7 @@ namespace Bantam
             (token, left, parser) =>
             {
                 var thenArm = parser.Parse(0);
-                parser.Consume(Colon, delegate { throw new ParseException("Expected ':'."); });
+                parser.Read(Colon, delegate { throw new ParseException("Expected ':'."); });
                 var elseArm = parser.Parse(Precedence.Conditional - 1);
                 return new ConditionalExpression(left, thenArm, elseArm);
             };
@@ -405,7 +405,7 @@ namespace Bantam
             (token, parser) =>
             {
                 var expression = parser.Parse(0);
-                parser.Consume(RightParen, delegate { throw new ParseException("Expected ')'."); });
+                parser.Read(RightParen, delegate { throw new ParseException("Expected ')'."); });
                 return expression;
             };
 
