@@ -113,7 +113,7 @@ namespace Gratt
                 switch (_infixFunction(kind, token, State))
                 {
                     case var (p, infix) when _precedenceComparer.Compare(precedence, p) < 0:
-                        TryRead();
+                        Read();
                         left = infix(token, left, this);
                         peeked = TryPeek();
                         break;
