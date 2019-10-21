@@ -450,8 +450,8 @@ namespace Bantam
     {
         public static Expression Parse(string source) =>
             Parser.Parse(0,
-                (TokenType type) => Spec.Instance.Prefix(type),
-                (TokenType type) => Spec.Instance.Infix(type),
+                (TokenType type, Token _) => Spec.Instance.Prefix(type),
+                (TokenType type, Token _) => Spec.Instance.Infix(type),
                 from t in Lexer.Lex(source)
                 select (t.Type, t));
 

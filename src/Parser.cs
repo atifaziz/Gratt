@@ -25,27 +25,28 @@ namespace Gratt
         public static TResult
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence,
-                Func<TKind, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
+                Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
-            Parse(default, initialPrecedence, prefixFunction, infixFunction, lexer);
+            Parse(default(Unit), initialPrecedence,
+                  (k, t, s) => prefixFunction(k, t), (k, t, s) => infixFunction(k, t), lexer);
 
         public static TResult
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
-                Func<TKind, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
+                Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
-            Parse(default, initialPrecedence, precedenceComparer, kindEqualityComparer, prefixFunction,
-                  infixFunction, lexer);
+            Parse(default(Unit), initialPrecedence, precedenceComparer, kindEqualityComparer,
+                  (k, t, s) => prefixFunction(k, t), (k, t, s) => infixFunction(k, t), lexer);
 
         public static TResult
             Parse<TState, TKind, TToken, TPrecedence, TResult>(
                 TState state,
                 TPrecedence initialPrecedence,
-                Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
+                Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer) =>
             Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
                   prefixFunction, infixFunction, lexer);
@@ -55,8 +56,8 @@ namespace Gratt
                 TState state,
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
-                Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
+                Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer)
         {
             var parser =
@@ -73,16 +74,16 @@ namespace Gratt
     {
         readonly IComparer<TPrecedence> _precedenceComparer;
         readonly IEqualityComparer<TKind> _tokenEqualityComparer;
-        readonly Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
-        readonly Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> _infixFunction;
+        readonly Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixFunction;
+        readonly Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> _infixFunction;
         (bool, TKind, TToken) _next;
         IEnumerator<(TKind, TToken)> _enumerator;
 
         internal Parser(TState state,
                         IComparer<TPrecedence> precedenceComparer,
                         IEqualityComparer<TKind> tokenEqualityComparer,
-                        Func<TKind, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
-                        Func<TKind, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
+                        Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
+                        Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                         IEnumerator<(TKind, TToken)> lexer)
         {
             State = state;
@@ -101,7 +102,7 @@ namespace Gratt
             if (!read.HasValue)
                 throw new ParseException("Unexpected end of input.");
             var (kind, token) = read.Value;
-            var prefix = _prefixFunction(kind);
+            var prefix = _prefixFunction(kind, token, State);
             var left = prefix(token, this);
 
             var peeked = TryPeek();
@@ -109,7 +110,7 @@ namespace Gratt
             while (peeked.HasValue)
             {
                 (kind, token) = peeked.Value;
-                switch (_infixFunction(kind))
+                switch (_infixFunction(kind, token, State))
                 {
                     case var (p, infix) when _precedenceComparer.Compare(precedence, p) < 0:
                         TryRead();
