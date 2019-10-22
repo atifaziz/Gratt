@@ -60,12 +60,13 @@ namespace Gratt
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
                 IEnumerable<(TKind, TToken)> lexer)
         {
+            using var e = lexer.GetEnumerator();
             var parser =
                 new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
                                                                         precedenceComparer,
                                                                         kindEqualityComparer,
                                                                         prefixFunction, infixFunction,
-                                                                        lexer.GetEnumerator());
+                                                                        e);
             return parser.Parse(initialPrecedence);
         }
     }
@@ -98,70 +99,52 @@ namespace Gratt
 
         public TResult Parse(TPrecedence precedence)
         {
-            var read = TryRead();
-            if (!read.HasValue)
-                throw new ParseException("Unexpected end of input.");
-            var (kind, token) = read.Value;
+            var (kind, token) = Read();
             var prefix = _prefixFunction(kind, token, State);
             var left = prefix(token, this);
 
-            var peeked = TryPeek();
-
-            while (peeked.HasValue)
+            while (true)
             {
-                (kind, token) = peeked.Value;
+                (kind, token) = Peek();
                 switch (_infixFunction(kind, token, State))
                 {
                     case var (p, infix) when _precedenceComparer.Compare(precedence, p) < 0:
                         Read();
                         left = infix(token, left, this);
-                        peeked = TryPeek();
                         break;
                     default:
                         return left;
                 }
             }
-
-            return left;
         }
 
         public bool Match(TKind kind)
         {
-            switch (TryPeek())
-            {
-                case var (k, _) when _tokenEqualityComparer.Equals(k, kind): Read(); return true;
-                default: return false;
-            }
+            var (pk, _) = Peek();
+            if (!_tokenEqualityComparer.Equals(pk, kind))
+                return false;
+            Read();
+            return true;
+        }
+
+        public TToken Read(TKind kind, Func<TKind, (TKind, TToken), Exception> onError)
+        {
+            var peeked = Peek();
+            var (pk, token) = peeked;
+            if (!_tokenEqualityComparer.Equals(pk, kind))
+                throw onError(kind, peeked);
+            Read();
+            return token;
+        }
+
+        public (TKind, TToken) Peek()
+        {
+            var (kind, token) = Read();
+            Unread(kind, token);
+            return (kind, token);
         }
 
         public (TKind, TToken) Read()
-        {
-            switch (TryPeek())
-            {
-                case var (kind, token): TryRead(); return (kind, token);
-                default: throw new InvalidOperationException();
-            }
-        }
-
-        public TToken Read(TKind kind, Func<TKind, (TKind, TToken)?, Exception> onError)
-        {
-            switch (TryPeek())
-            {
-                case var (k, t) when _tokenEqualityComparer.Equals(k, kind): Read(); return t;
-                case var peeked: throw onError(kind, peeked);
-            }
-        }
-
-        public (TKind, TToken)? TryPeek()
-        {
-            switch (TryRead())
-            {
-                case var (kind, token): Unread(kind, token); return (kind, token);
-                default: return default;
-            }
-        }
-
-        public (TKind, TToken)? TryRead()
         {
             switch (_next)
             {
@@ -171,13 +154,14 @@ namespace Gratt
                 default:
                     switch (_enumerator)
                     {
-                        case null: return default;
+                        case null:
+                            throw new InvalidOperationException();
                         case var e:
                             if (!e.MoveNext())
                             {
                                 _enumerator.Dispose();
                                 _enumerator = null;
-                                return default;
+                                throw new InvalidOperationException();
                             }
                             var (kind, token) = e.Current;
                             return (kind, token);
@@ -190,15 +174,5 @@ namespace Gratt
             (true, _, _) => throw new InvalidOperationException(),
             _ => (true, kind, token)
         };
-    }
-
-    #if !PRATT_NO_SERIALIZABLE
-    [Serializable]
-    #endif
-    partial class ParseException : Exception
-    {
-        public ParseException() {}
-        public ParseException(string message) : base(message) {}
-        public ParseException(string message, Exception inner) : base(message, inner) {}
     }
 }
