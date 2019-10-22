@@ -25,7 +25,6 @@
 
 namespace Gratt.Tests
 {
-    using System.Linq;
     using System.Text;
     using Bantam;
     using NUnit.Framework;
