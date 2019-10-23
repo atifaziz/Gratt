@@ -225,48 +225,20 @@ namespace CSharp.Preprocessing
                     {
                         switch (ch)
                         {
-                            case ' ':
-                            case '\t':
-                                si = i;
-                                state = State.WhiteSpace;
-                                break;
-                            case 't':
-                                si = i;
-                                state = State.IdentifierOrTrue;
-                                break;
-                            case 'f':
-                                si = i;
-                                state = State.IdentifierOrFalse;
-                                break;
-                            case '(':
-                                yield return Token(TokenKind.LParen, i, i + 1);
-                                break;
-                            case ')':
-                                yield return Token(TokenKind.RParen, i, i + 1);
-                                break;
-                            case '&':
-                                si = i;
-                                state = State.Ampersand;
-                                break;
-                            case '|':
-                                si = i;
-                                state = State.Pipe;
-                                break;
-                            case '!':
-                                si = i;
-                                state = State.Bang;
-                                break;
-                            case '=':
-                                si = i;
-                                state = State.Equal;
-                                break;
-                            case var c when char.IsLetter(c):
-                                si = i;
-                                state = State.Symbol;
-                                break;
+                            case ' ': case '\t': state = State.WhiteSpace; break;
+                            case 't': state = State.IdentifierOrTrue; break;
+                            case 'f': state = State.IdentifierOrFalse; break;
+                            case '&': state = State.Ampersand; break;
+                            case '|': state = State.Pipe; break;
+                            case '!': state = State.Bang; break;
+                            case '=': state = State.Equal; break;
+                            case '(': yield return Token(TokenKind.LParen, i, i + 1); break;
+                            case ')': yield return Token(TokenKind.RParen, i, i + 1); break;
+                            case var c when char.IsLetter(c): state = State.Symbol; break;
                             default:
                                 throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
                         }
+                        si = i;
                         break;
                     }
                     case State.IdentifierOrTrue:
