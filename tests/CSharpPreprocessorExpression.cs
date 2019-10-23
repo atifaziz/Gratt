@@ -222,146 +222,146 @@ namespace CSharp.Preprocessing
                 switch (state)
                 {
                     case State.Initial:
+                    {
+                        switch (ch)
                         {
-                            switch (ch)
-                            {
-                                case ' ':
-                                case '\t':
-                                    si = i;
-                                    state = State.WhiteSpace;
-                                    break;
-                                case 't':
-                                    si = i;
-                                    state = State.IdentifierOrTrue;
-                                    break;
-                                case 'f':
-                                    si = i;
-                                    state = State.IdentifierOrFalse;
-                                    break;
-                                case '(':
-                                    yield return Token(TokenKind.LParen, i, i + 1);
-                                    break;
-                                case ')':
-                                    yield return Token(TokenKind.RParen, i, i + 1);
-                                    break;
-                                case '&':
-                                    si = i;
-                                    state = State.Ampersand;
-                                    break;
-                                case '|':
-                                    si = i;
-                                    state = State.Pipe;
-                                    break;
-                                case '!':
-                                    si = i;
-                                    state = State.Bang;
-                                    break;
-                                case '=':
-                                    si = i;
-                                    state = State.Equal;
-                                    break;
-                                case var c when char.IsLetter(c):
-                                    si = i;
-                                    state = State.Symbol;
-                                    break;
-                                default:
-                                    throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
-                            }
-                            break;
-                        }
-                    case State.IdentifierOrTrue:
-                        {
-                            switch (i - si)
-                            {
-                                case 1 when ch == 'r': break;
-                                case 2 when ch == 'u': break;
-                                case 3 when ch == 'e':
-                                    state = State.True;
-                                    break;
-                                default:
-                                    state = State.Symbol;
-                                    goto restart;
-                            }
-                            break;
-                        }
-                    case State.IdentifierOrFalse:
-                        {
-                            switch (i - si)
-                            {
-                                case 1 when ch == 'a': break;
-                                case 2 when ch == 'l': break;
-                                case 3 when ch == 's': break;
-                                case 4 when ch == 'e':
-                                    state = State.False;
-                                    break;
-                                default:
-                                    state = State.Symbol;
-                                    goto restart;
-                            }
-                            break;
-                        }
-                    case State.True:
-                    case State.False:
-                        {
-                            if (char.IsLetterOrDigit(ch))
-                            {
+                            case ' ':
+                            case '\t':
+                                si = i;
+                                state = State.WhiteSpace;
+                                break;
+                            case 't':
+                                si = i;
+                                state = State.IdentifierOrTrue;
+                                break;
+                            case 'f':
+                                si = i;
+                                state = State.IdentifierOrFalse;
+                                break;
+                            case '(':
+                                yield return Token(TokenKind.LParen, i, i + 1);
+                                break;
+                            case ')':
+                                yield return Token(TokenKind.RParen, i, i + 1);
+                                break;
+                            case '&':
+                                si = i;
+                                state = State.Ampersand;
+                                break;
+                            case '|':
+                                si = i;
+                                state = State.Pipe;
+                                break;
+                            case '!':
+                                si = i;
+                                state = State.Bang;
+                                break;
+                            case '=':
+                                si = i;
+                                state = State.Equal;
+                                break;
+                            case var c when char.IsLetter(c):
+                                si = i;
                                 state = State.Symbol;
                                 break;
-                            }
-                            else
-                            {
-                                yield return Token(state == State.True ? TokenKind.True : TokenKind.False, si, i);
-                                goto restart;
-                            }
+                            default:
+                                throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
                         }
+                        break;
+                    }
+                    case State.IdentifierOrTrue:
+                    {
+                        switch (i - si)
+                        {
+                            case 1 when ch == 'r': break;
+                            case 2 when ch == 'u': break;
+                            case 3 when ch == 'e':
+                                state = State.True;
+                                break;
+                            default:
+                                state = State.Symbol;
+                                goto restart;
+                        }
+                        break;
+                    }
+                    case State.IdentifierOrFalse:
+                    {
+                        switch (i - si)
+                        {
+                            case 1 when ch == 'a': break;
+                            case 2 when ch == 'l': break;
+                            case 3 when ch == 's': break;
+                            case 4 when ch == 'e':
+                                state = State.False;
+                                break;
+                            default:
+                                state = State.Symbol;
+                                goto restart;
+                        }
+                        break;
+                    }
+                    case State.True:
+                    case State.False:
+                    {
+                        if (char.IsLetterOrDigit(ch))
+                        {
+                            state = State.Symbol;
+                            break;
+                        }
+                        else
+                        {
+                            yield return Token(state == State.True ? TokenKind.True : TokenKind.False, si, i);
+                            goto restart;
+                        }
+                    }
                     case State.Symbol:
-                        {
-                            if (char.IsLetterOrDigit(ch))
-                                break;
-                            yield return Token(TokenKind.Symbol, si, i);
-                            goto restart;
-                        }
+                    {
+                        if (char.IsLetterOrDigit(ch))
+                            break;
+                        yield return Token(TokenKind.Symbol, si, i);
+                        goto restart;
+                    }
                     case State.WhiteSpace:
+                    {
+                        if (ch == ' ' || ch == '\t')
+                            break;
+                        yield return Token(TokenKind.WhiteSpace, si, i);
+                        goto restart;
+                    }
+                    case State.Ampersand:
+                    {
+                        if (ch != '&')
+                            throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                        yield return Token(TokenKind.AmpersandAmpersand, si, i + 1);
+                        break;
+                    }
+                    case State.Pipe:
+                    {
+                        if (ch != '|')
+                            throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                        yield return Token(TokenKind.PipePipe, si, i + 1);
+                        break;
+                    }
+                    case State.Equal:
+                    {
+                        if (ch != '=')
+                            throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                        yield return Token(TokenKind.EqualEqual, si, i + 1);
+                        break;
+                    }
+                    case State.Bang:
+                    {
+                        if (ch == '=')
                         {
-                            if (ch == ' ' || ch == '\t')
-                                break;
-                            yield return Token(TokenKind.WhiteSpace, si, i);
+                            yield return Token(TokenKind.BangEqual, si, i + 1);
+                            break;
+                        }
+                        else
+                        {
+                            yield return Token(TokenKind.Bang, si, i);
                             goto restart;
                         }
-                    case State.Ampersand:
-                        {
-                            if (ch != '&')
-                                throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
-                            yield return Token(TokenKind.AmpersandAmpersand, si, i + 1);
-                            break;
-                        }
-                    case State.Pipe:
-                        {
-                            if (ch != '|')
-                                throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
-                            yield return Token(TokenKind.PipePipe, si, i + 1);
-                            break;
-                        }
-                    case State.Equal:
-                        {
-                            if (ch != '=')
-                                throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
-                            yield return Token(TokenKind.EqualEqual, si, i + 1);
-                            break;
-                        }
-                    case State.Bang:
-                        {
-                            if (ch == '=')
-                            {
-                                yield return Token(TokenKind.BangEqual, si, i + 1);
-                                break;
-                            }
-                            else
-                            {
-                                yield return Token(TokenKind.Bang, si, i);
-                                goto restart;
-                            }
-                        }
+                    }
                     default:
                         throw new Exception("Internal error due to unhandled state: " + state);
                 }
