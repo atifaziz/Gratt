@@ -71,6 +71,10 @@ namespace Gratt.Tests
         [TestCase("||", "Unexpected <PipePipe> token at offset 0.")]
         [TestCase("==", "Unexpected <EqualEqual> token at offset 0.")]
         [TestCase("!=", "Unexpected <BangEqual> token at offset 0.")]
+        [TestCase("&*", "Unexpected at offset 1: *")]
+        [TestCase("|*", "Unexpected at offset 1: *")]
+        [TestCase("=*", "Unexpected at offset 1: *")]
+        [TestCase("!*", "Unexpected at offset 1: *")]
         public void SyntaxError(string expression, string message)
         {
             var e =

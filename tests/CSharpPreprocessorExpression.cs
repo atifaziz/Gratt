@@ -265,7 +265,7 @@ namespace CSharp.Preprocessing
                                 state = State.Symbol;
                                 break;
                             default:
-                                throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                                throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
                         }
                         break;
                     }
@@ -331,21 +331,21 @@ namespace CSharp.Preprocessing
                     case State.Ampersand:
                     {
                         if (ch != '&')
-                            throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                            throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
                         yield return Token(TokenKind.AmpersandAmpersand, si, i + 1);
                         break;
                     }
                     case State.Pipe:
                     {
                         if (ch != '|')
-                            throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                            throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
                         yield return Token(TokenKind.PipePipe, si, i + 1);
                         break;
                     }
                     case State.Equal:
                     {
                         if (ch != '=')
-                            throw new SyntaxErrorException($"Unexpected at {i + 1}: {ch}");
+                            throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
                         yield return Token(TokenKind.EqualEqual, si, i + 1);
                         break;
                     }
