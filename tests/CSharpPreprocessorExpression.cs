@@ -187,7 +187,7 @@ namespace CSharp.Preprocessing
 
         enum State
         {
-            Initial,
+            Scan,
             IdentifierOrTrue,
             IdentifierOrFalse,
             True,
@@ -210,7 +210,7 @@ namespace CSharp.Preprocessing
                 return new Token(kind, fi, ei);
             }
 
-            var state = State.Initial;
+            var state = State.Scan;
             var si = 0;
             var i = 0;
             for (; i < s.Length; i++)
@@ -218,10 +218,10 @@ namespace CSharp.Preprocessing
                 var ch = s[i];
             restart:
                 if (resetState)
-                    (state, resetState) = (State.Initial, false);
+                    (state, resetState) = (State.Scan, false);
                 switch (state)
                 {
-                    case State.Initial:
+                    case State.Scan:
                     {
                         switch (ch)
                         {
@@ -343,7 +343,7 @@ namespace CSharp.Preprocessing
 
             switch (state)
             {
-                case State.Initial:
+                case State.Scan:
                     goto eoi;
                 case State.IdentifierOrTrue:
                 case State.IdentifierOrFalse:
