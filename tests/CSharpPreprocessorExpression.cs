@@ -343,18 +343,17 @@ namespace CSharp.Preprocessing
 
             switch (state)
             {
-                case State.Scan:
-                    goto eoi;
-                case State.IdentifierOrTrue:
+                case State.Scan             : goto eoi;
+                case State.IdentifierOrTrue :
                 case State.IdentifierOrFalse:
-                case State.Symbol: kind = TokenKind.Symbol; break;
-                case State.WhiteSpace: kind = TokenKind.WhiteSpace; break;
-                case State.True: kind = TokenKind.True; break;
-                case State.False: kind = TokenKind.False; break;
-                case State.Bang: kind = TokenKind.Bang; break;
-                case State.Ampersand:
-                case State.Pipe:
-                case State.Equal:
+                case State.Symbol           : kind = TokenKind.Symbol    ; break;
+                case State.WhiteSpace       : kind = TokenKind.WhiteSpace; break;
+                case State.True             : kind = TokenKind.True      ; break;
+                case State.False            : kind = TokenKind.False     ; break;
+                case State.Bang             : kind = TokenKind.Bang      ; break;
+                case State.Ampersand        :
+                case State.Pipe             :
+                case State.Equal            :
                     throw new SyntaxErrorException($"Unexpected end of input at offset {i}.");
                 default:
                     throw new Exception("Internal error due to unhandled state: " + state);
