@@ -56,6 +56,8 @@ namespace Gratt.Tests
         [TestCase("!(true)", null, false)]
         [TestCase("True", null, false)]
         [TestCase("False", "False", true)]
+        [TestCase("true1", null, false)]
+        [TestCase("false1", "false1", true)]
         public void Evaluate(string expression, string symbols, bool expected) =>
             Test(expression, symbols, expected);
 
