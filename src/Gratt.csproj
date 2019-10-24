@@ -4,7 +4,7 @@
     <VersionPrefix>1.0.0</VersionPrefix>
     <TargetFrameworks>netstandard2.0;netstandard1.3;netstandard1.0</TargetFrameworks>
     <LangVersion>8</LangVersion>
-    <Description>Generic Vaughn Pratt's Top Down Operator Precedence parser.</Description>
+    <Description>Generic Vaughn Pratt's top-down operator precedence parser.</Description>
     <Copyright>Copyright &#169; 2019 Atif Aziz. All rights reserved. Portions Copyright &#169; 2011 Robert Nystrom.</Copyright>
     <Authors>Atif Aziz</Authors>
     <Owners>Atif Aziz</Owners>
