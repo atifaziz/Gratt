@@ -86,7 +86,8 @@ jobs:
               -k ${{ secrets.MYGET_API_KEY }}
               -s https://www.myget.org/F/raboof/api/v2/package
               -sk ${{ secrets.MYGET_API_KEY }}
-              -ss Source https://www.myget.org/F/raboof/symbols/api/v2/package;
+              -ss https://www.myget.org/F/raboof/symbols/api/v2/package
+              ;
             if ($LASTEXITCODE) {
               Write-Error "'dotnet nguet push' terminated with a non-zero exit code of $LASTEXITCODE."
             }
