@@ -82,7 +82,7 @@ jobs:
       run:
         Get-ChildItem -Exclude *.symbols.nupkg dist/*.nupkg |
           ForEach-Object {
-            dotnet nuget push
+            dotnet nuget push $_.FullName
               -k ${{ secrets.MYGET_API_KEY }}
               -s https://www.myget.org/F/raboof/api/v2/package
               -sk ${{ secrets.MYGET_API_KEY }}
