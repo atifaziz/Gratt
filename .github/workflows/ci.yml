@@ -1,0 +1,75 @@
+name: Build, pack and test
+
+on:
+  push:
+    branches-ignore:
+    - 'wip/**'
+    - 'tmp/**'
+    tags-ignore:
+    - '*'
+    paths-ignore:
+    - 'docs/**'
+  pull_request:
+    paths-ignore:
+    - 'docs/**'
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    strategy:
+      matrix:
+        os: [windows-2019, macOS-10.14, ubuntu-16.04]
+
+    steps:
+
+    - name: Clone repository
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.0.100
+
+    - name: .NET Core Info
+      run: dotnet --info
+
+    - name: Build and Pack (Windows)
+      if: startsWith(matrix.os, 'windows')
+      run: |
+        $cd = [datetimeoffset](git show -q --date=iso --format=%cd)
+        $id = $cd.ToUniversalTime().ToString('yyyyMMdd''t''HHmm')
+        $id = $id.Substring(0, 13)
+        & $env:COMSPEC /c call pack.cmd ci-$id
+
+    - name: Build (Ubuntu/macOS)
+      if: startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macOS')
+      run: ./build.sh
+
+    - name: Test (Windows)
+      if: startsWith(matrix.os, 'windows')
+      run: test.cmd
+      shell: cmd
+
+    - name: Test (Ubuntu/macOS)
+      if: startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macOS')
+      run: ./test.sh
+
+    - name: Archive artifacts
+      if: startsWith(matrix.os, 'windows')
+      run: |
+        cd dist
+        tar -cz -f nupkg.tar.gz *.nupkg
+
+    - name: Upload artifact
+      if: startsWith(matrix.os, 'windows')
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: packages
+        path: dist/nupkg.tar.gz
