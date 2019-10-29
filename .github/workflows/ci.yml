@@ -73,3 +73,21 @@ jobs:
       with:
         name: packages
         path: dist/nupkg.tar.gz
+
+    - name: Push packages to MyGet
+      if:
+        startsWith(matrix.os, 'windows')
+        && github.ref == 'refs/heads/master'
+        && github.repository == 'atifaziz/Gratt'
+      run:
+        Get-ChildItem -Exclude *.symbols.nupkg dist/*.nupkg |
+          ForEach-Object {
+            dotnet push
+              -k ${{ secrets.MYGET_API_KEY }}
+              -s https://www.myget.org/F/raboof/api/v2/package
+              -sk ${{ secrets.MYGET_API_KEY }}
+              -ss Source https://www.myget.org/F/raboof/symbols/api/v2/package;
+            if ($LASTEXITCODE) {
+              Write-Error "'dotnet push' terminated with a non-zero exit code of $LASTEXITCODE."
+            }
+          }
