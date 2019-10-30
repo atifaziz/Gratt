@@ -226,7 +226,7 @@ namespace Gratt
         readonly Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixSelector;
         readonly Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> _infixSelector;
         (bool, TKind, TToken) _next;
-        IEnumerator<(TKind, TToken)> _enumerator;
+        IEnumerator<(TKind, TToken)> _lexer;
 
         internal Parser(TState state,
                         IComparer<TPrecedence> precedenceComparer,
@@ -240,7 +240,7 @@ namespace Gratt
             _tokenEqualityComparer = tokenEqualityComparer;
             _prefixSelector = prefixSelector;
             _infixSelector = infixSelector;
-            _enumerator = lexer;
+            _lexer = lexer;
         }
 
         /// <summary>
@@ -340,15 +340,15 @@ namespace Gratt
                     _next = default;
                     return (kind, token);
                 default:
-                    switch (_enumerator)
+                    switch (_lexer)
                     {
                         case null:
                             throw new InvalidOperationException();
                         case var e:
                             if (!e.MoveNext())
                             {
-                                _enumerator.Dispose();
-                                _enumerator = null;
+                                _lexer.Dispose();
+                                _lexer = null;
                                 throw new InvalidOperationException();
                             }
                             var (kind, token) = e.Current;
