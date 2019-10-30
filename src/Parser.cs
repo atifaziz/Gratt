@@ -43,11 +43,11 @@ namespace Gratt
         /// function. The infix parser function receives the token, the left
         /// operand/result and parser as arguments and returns the result of
         /// parsing.</param>
-        /// <param name="lexer">
-        /// A sequence of token kind and token pairs produced by a lexer.</param>
+        /// <param name="tokens">
+        /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="lexer"/>
+        /// The last token kind and token pair yielded by the <see cref="tokens"/>
         /// must represent the end-of-input otherwise the behavior of this
         /// function, and by extension parsing, is undefined.
         /// </remarks>
@@ -57,9 +57,9 @@ namespace Gratt
                 TPrecedence initialPrecedence,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> lexer) =>
+                IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence,
-                  (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), lexer);
+                  (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
 
         /// <summary>
         /// Parses tokens into a result using top-down operator precedence.
@@ -88,11 +88,11 @@ namespace Gratt
         /// function. The infix parser function receives the token, the left
         /// operand/result and parser as arguments and returns the result of
         /// parsing.</param>
-        /// <param name="lexer">
-        /// A sequence of token kind and token pairs produced by a lexer.</param>
+        /// <param name="tokens">
+        /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="lexer"/>
+        /// The last token kind and token pair yielded by the <see cref="tokens"/>
         /// must represent the end-of-input otherwise the behavior of this
         /// function, and by extension parsing, is undefined.
         /// </remarks>
@@ -103,9 +103,9 @@ namespace Gratt
                 IEqualityComparer<TKind> kindEqualityComparer,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> lexer) =>
+                IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, precedenceComparer, kindEqualityComparer,
-                  (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), lexer);
+                  (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
 
         /// <summary>
         /// Parses tokens into a result using top-down operator precedence. A
@@ -132,11 +132,11 @@ namespace Gratt
         /// function. The infix parser function receives the token, the left
         /// operand/result and parser as arguments and returns the result of
         /// parsing.</param>
-        /// <param name="lexer">
-        /// A sequence of token kind and token pairs produced by a lexer.</param>
+        /// <param name="tokens">
+        /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="lexer"/>
+        /// The last token kind and token pair yielded by the <see cref="tokens"/>
         /// must represent the end-of-input otherwise the behavior of this
         /// function, and by extension parsing, is undefined.
         /// </remarks>
@@ -147,9 +147,9 @@ namespace Gratt
                 TPrecedence initialPrecedence,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> lexer) =>
+                IEnumerable<(TKind, TToken)> tokens) =>
             Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
-                  prefixSelector, infixSelector, lexer);
+                  prefixSelector, infixSelector, tokens);
 
         /// <summary>
         /// Parses tokens into a result using top-down operator precedence.
@@ -181,11 +181,11 @@ namespace Gratt
         /// function. The infix parser function receives the token, the left
         /// operand/result and parser as arguments and returns the result of
         /// parsing.</param>
-        /// <param name="lexer">
-        /// A sequence of token kind and token pairs produced by a lexer.</param>
+        /// <param name="tokens">
+        /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="lexer"/>
+        /// The last token kind and token pair yielded by the <see cref="tokens"/>
         /// must represent the end-of-input otherwise the behavior of this
         /// function, and by extension parsing, is undefined.
         /// </remarks>
@@ -197,9 +197,9 @@ namespace Gratt
                 IEqualityComparer<TKind> kindEqualityComparer,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> lexer)
+                IEnumerable<(TKind, TToken)> tokens)
         {
-            using var e = lexer.GetEnumerator();
+            using var e = tokens.GetEnumerator();
             var parser =
                 new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
                                                                         precedenceComparer,
