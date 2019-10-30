@@ -331,6 +331,10 @@ namespace Gratt
         /// Reads the next token kind and token pair.
         /// </summary>
         /// <returns>The token kind and token pair that was read.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// There are no more tokens to read and usually indicates an
+        /// implementation fault in parsing.
+        /// </exception>
 
         public (TKind, TToken) Read()
         {
