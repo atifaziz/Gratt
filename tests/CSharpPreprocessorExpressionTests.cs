@@ -58,6 +58,8 @@ namespace Gratt.Tests
         [TestCase("False", "False", true)]
         [TestCase("true1", null, false)]
         [TestCase("false1", "false1", true)]
+        [TestCase("(a || b) && (c || d)", "a b", false)]
+        [TestCase("a || b && c || d", "a b", true)]
         public void Evaluate(string expression, string symbols, bool expected) =>
             Test(expression, symbols, expected);
 

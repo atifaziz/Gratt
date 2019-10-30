@@ -110,7 +110,8 @@ namespace CSharp.Preprocessing
     enum Precedence
     {
         Default    = 0,
-        Logical    = 10, // || &&
+        LogicalOr  = 10, // ||
+        LogicalAnd = 15, // &&
         Relational = 20, // == !=
         Prefix     = 30, // !
     }
@@ -143,8 +144,8 @@ namespace CSharp.Preprocessing
 
             { TokenKind.Bang, (_, parser) => !parser.Parse(Precedence.Prefix) },
 
-            { TokenKind.AmpersandAmpersand, Precedence.Logical   , (a, rbp, p) => a && p.Parse(rbp) },
-            { TokenKind.PipePipe          , Precedence.Logical   , (a, b) => a || b },
+            { TokenKind.AmpersandAmpersand, Precedence.LogicalAnd, (a, rbp, p) => a && p.Parse(rbp) },
+            { TokenKind.PipePipe          , Precedence.LogicalOr , (a, b) => a || b },
             { TokenKind.EqualEqual        , Precedence.Relational, (a, b) => a == b },
             { TokenKind.BangEqual         , Precedence.Relational, (a, b) => a != b },
         };
