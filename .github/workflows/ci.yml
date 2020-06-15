@@ -59,6 +59,13 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macOS')
       run: ./test.sh
 
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./tests/coverage.opencover.xml
+        flags: unittests
+        fail_ci_if_error: false
+
     - name: Archive artifacts
       if: startsWith(matrix.os, 'windows')
       run: |
