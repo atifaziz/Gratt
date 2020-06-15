@@ -204,15 +204,15 @@ namespace CSharp.Preprocessing
         static IEnumerable<Token> ScanImpl(string s)
         {
             var resetState = false;
+            var si = 0;
 
-            Token Token(TokenKind kind, int i, int len)
+            Token Token(TokenKind kind, int len)
             {
                 resetState = true;
-                return new Token(kind, i, len);
+                return new Token(kind, si, len);
             }
 
             var state = State.Scan;
-            var si = 0;
             var i = 0;
             for (; i < s.Length; i++)
             {
@@ -224,6 +224,7 @@ namespace CSharp.Preprocessing
                 {
                     case State.Scan:
                     {
+                        si = i;
                         switch (ch)
                         {
                             case ' ': case '\t': state = State.WhiteSpace; break;
@@ -233,13 +234,12 @@ namespace CSharp.Preprocessing
                             case '|': state = State.Pipe; break;
                             case '!': state = State.Bang; break;
                             case '=': state = State.Equal; break;
-                            case '(': yield return Token(TokenKind.LParen, i, 1); break;
-                            case ')': yield return Token(TokenKind.RParen, i, 1); break;
+                            case '(': yield return Token(TokenKind.LParen, 1); break;
+                            case ')': yield return Token(TokenKind.RParen, 1); break;
                             case var c when char.IsLetter(c): state = State.Symbol; break;
                             default:
                                 throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
                         }
-                        si = i;
                         break;
                     }
                     case State.IdentifierOrTrue:
@@ -283,7 +283,7 @@ namespace CSharp.Preprocessing
                         }
                         else
                         {
-                            yield return Token(state == State.True ? TokenKind.True : TokenKind.False, si, i - si);
+                            yield return Token(state == State.True ? TokenKind.True : TokenKind.False, i - si);
                             goto restart;
                         }
                     }
@@ -291,47 +291,47 @@ namespace CSharp.Preprocessing
                     {
                         if (char.IsLetterOrDigit(ch))
                             break;
-                        yield return Token(TokenKind.Symbol, si, i - si);
+                        yield return Token(TokenKind.Symbol, i - si);
                         goto restart;
                     }
                     case State.WhiteSpace:
                     {
                         if (ch == ' ' || ch == '\t')
                             break;
-                        yield return Token(TokenKind.WhiteSpace, si, i - si);
+                        yield return Token(TokenKind.WhiteSpace, i - si);
                         goto restart;
                     }
                     case State.Ampersand:
                     {
                         if (ch != '&')
                             throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
-                        yield return Token(TokenKind.AmpersandAmpersand, si, 2);
+                        yield return Token(TokenKind.AmpersandAmpersand, 2);
                         break;
                     }
                     case State.Pipe:
                     {
                         if (ch != '|')
                             throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
-                        yield return Token(TokenKind.PipePipe, si, 2);
+                        yield return Token(TokenKind.PipePipe, 2);
                         break;
                     }
                     case State.Equal:
                     {
                         if (ch != '=')
                             throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
-                        yield return Token(TokenKind.EqualEqual, si, 2);
+                        yield return Token(TokenKind.EqualEqual, 2);
                         break;
                     }
                     case State.Bang:
                     {
                         if (ch == '=')
                         {
-                            yield return Token(TokenKind.BangEqual, si, 2);
+                            yield return Token(TokenKind.BangEqual, 2);
                             break;
                         }
                         else
                         {
-                            yield return Token(TokenKind.Bang, si, 1);
+                            yield return Token(TokenKind.Bang, 1);
                             goto restart;
                         }
                     }
@@ -360,10 +360,10 @@ namespace CSharp.Preprocessing
                     throw new Exception("Internal error due to unhandled state: " + state);
             }
 
-            yield return Token(kind, si, i - si);
+            yield return Token(kind, i - si);
 
             eoi:
-            yield return Token(TokenKind.Eoi, i, 0);
+            yield return new Token(TokenKind.Eoi, i, 0);
         }
     }
 }
