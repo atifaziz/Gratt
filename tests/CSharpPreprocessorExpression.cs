@@ -79,33 +79,32 @@ namespace CSharp.Preprocessing
     readonly struct Token<T> : IEquatable<Token<T>>
     {
         public readonly T   Kind;
-        public readonly int StartOffset;
-        public readonly int EndOffset;
+        public readonly int Offset;
+        public readonly int Length;
 
-        public Token(T kind, int startOffset, int endOffset) =>
-            (Kind, StartOffset, EndOffset) = (kind, startOffset, endOffset);
+        public Token(T kind, int offset, int length) =>
+            (Kind, Offset, Length) = (kind, offset, length);
 
-        public int Length => EndOffset - StartOffset;
+        public int EndOffset => Offset + Length;
 
         public bool Equals(Token<T> other) =>
             EqualityComparer<T>.Default.Equals(Kind, other.Kind)
-            && StartOffset == other.StartOffset
-            && EndOffset == other.EndOffset;
+            && Offset == other.Offset && Length == other.Length;
 
         public override bool Equals(object obj) =>
             obj is Token<T> other && Equals(other);
 
         public override int GetHashCode() =>
-            unchecked((((EqualityComparer<T>.Default.GetHashCode(Kind) * 397) ^ StartOffset.GetHashCode()) * 397) ^ EndOffset.GetHashCode());
+            unchecked((((EqualityComparer<T>.Default.GetHashCode(Kind) * 397) ^ Offset.GetHashCode()) * 397) ^ EndOffset.GetHashCode());
 
         public static bool operator ==(Token<T> left, Token<T> right) => left.Equals(right);
         public static bool operator !=(Token<T> left, Token<T> right) => !left.Equals(right);
 
         public override string ToString() =>
-            $"{Kind} [{StartOffset}..{EndOffset})";
+            $"{Kind} [{Offset}..{EndOffset})";
 
         public string Substring(string source) =>
-            source.Substring(StartOffset, Length);
+            source.Substring(Offset, Length);
     }
 
     enum Precedence
@@ -138,7 +137,7 @@ namespace CSharp.Preprocessing
                 {
                     var result = parser.Parse(0);
                     parser.Read(TokenKind.RParen, (TokenKind expected, (TokenKind, Token Token) actual) =>
-                                    throw new SyntaxErrorException($"Expected {expected} token at {actual.Token.StartOffset}."));
+                                    throw new SyntaxErrorException($"Expected {expected} token at {actual.Token.Offset}."));
                     return result;
                 }
             },
@@ -170,7 +169,7 @@ namespace CSharp.Preprocessing
 
         public PrefixParselet Prefix(Token token)
             => _prefixes.TryGetValue(token.Kind, out var v) ? v
-             : throw new SyntaxErrorException($"Unexpected <{token.Kind}> token at offset {token.StartOffset}.");
+             : throw new SyntaxErrorException($"Unexpected <{token.Kind}> token at offset {token.Offset}.");
 
         public (Precedence, InfixParselet)? Infix(TokenKind type) =>
             _infixes.TryGetValue(type, out var v) ? ((Precedence, InfixParselet)?)v : null;
@@ -206,10 +205,10 @@ namespace CSharp.Preprocessing
         {
             var resetState = false;
 
-            Token Token(TokenKind kind, int fi, int ei)
+            Token Token(TokenKind kind, int i, int len)
             {
                 resetState = true;
-                return new Token(kind, fi, ei);
+                return new Token(kind, i, len);
             }
 
             var state = State.Scan;
@@ -234,8 +233,8 @@ namespace CSharp.Preprocessing
                             case '|': state = State.Pipe; break;
                             case '!': state = State.Bang; break;
                             case '=': state = State.Equal; break;
-                            case '(': yield return Token(TokenKind.LParen, i, i + 1); break;
-                            case ')': yield return Token(TokenKind.RParen, i, i + 1); break;
+                            case '(': yield return Token(TokenKind.LParen, i, 1); break;
+                            case ')': yield return Token(TokenKind.RParen, i, 1); break;
                             case var c when char.IsLetter(c): state = State.Symbol; break;
                             default:
                                 throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
@@ -284,7 +283,7 @@ namespace CSharp.Preprocessing
                         }
                         else
                         {
-                            yield return Token(state == State.True ? TokenKind.True : TokenKind.False, si, i);
+                            yield return Token(state == State.True ? TokenKind.True : TokenKind.False, si, i - si);
                             goto restart;
                         }
                     }
@@ -292,47 +291,47 @@ namespace CSharp.Preprocessing
                     {
                         if (char.IsLetterOrDigit(ch))
                             break;
-                        yield return Token(TokenKind.Symbol, si, i);
+                        yield return Token(TokenKind.Symbol, si, i - si);
                         goto restart;
                     }
                     case State.WhiteSpace:
                     {
                         if (ch == ' ' || ch == '\t')
                             break;
-                        yield return Token(TokenKind.WhiteSpace, si, i);
+                        yield return Token(TokenKind.WhiteSpace, si, i - si);
                         goto restart;
                     }
                     case State.Ampersand:
                     {
                         if (ch != '&')
                             throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
-                        yield return Token(TokenKind.AmpersandAmpersand, si, i + 1);
+                        yield return Token(TokenKind.AmpersandAmpersand, si, 2);
                         break;
                     }
                     case State.Pipe:
                     {
                         if (ch != '|')
                             throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
-                        yield return Token(TokenKind.PipePipe, si, i + 1);
+                        yield return Token(TokenKind.PipePipe, si, 2);
                         break;
                     }
                     case State.Equal:
                     {
                         if (ch != '=')
                             throw new SyntaxErrorException($"Unexpected at offset {i}: {ch}");
-                        yield return Token(TokenKind.EqualEqual, si, i + 1);
+                        yield return Token(TokenKind.EqualEqual, si, 2);
                         break;
                     }
                     case State.Bang:
                     {
                         if (ch == '=')
                         {
-                            yield return Token(TokenKind.BangEqual, si, i + 1);
+                            yield return Token(TokenKind.BangEqual, si, 2);
                             break;
                         }
                         else
                         {
-                            yield return Token(TokenKind.Bang, si, i);
+                            yield return Token(TokenKind.Bang, si, 1);
                             goto restart;
                         }
                     }
@@ -361,10 +360,10 @@ namespace CSharp.Preprocessing
                     throw new Exception("Internal error due to unhandled state: " + state);
             }
 
-            yield return Token(kind, si, i);
+            yield return Token(kind, si, i - si);
 
             eoi:
-            yield return Token(TokenKind.Eoi, i, i);
+            yield return Token(TokenKind.Eoi, i, 0);
         }
     }
 }
