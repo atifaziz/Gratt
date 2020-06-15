@@ -32,6 +32,11 @@ namespace Gratt
         /// <typeparam name="TPrecedence">The type of precedence.</typeparam>
         /// <typeparam name="TResult">The type of the result.</typeparam>
         /// <param name="initialPrecedence">The initial precedence.</param>
+        /// <param name="eoi">A token kind that marks the end of input.</param>
+        /// <param name="eoiErrorSelector">
+        /// A function that projects an <see cref="Exception"/> when the
+        /// end-of-input token is not the the last token of the
+        /// <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
         /// A function that maps a token to a prefix parser function. If the
         /// given token is not a prefix then the function must fail by throwing
@@ -55,10 +60,11 @@ namespace Gratt
         public static TResult
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence,
+                TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
                 IEnumerable<(TKind, TToken)> tokens) =>
-            Parse(default(Unit), initialPrecedence,
+            Parse(default(Unit), initialPrecedence, eoi, eoiErrorSelector,
                   (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
 
         /// <summary>
@@ -77,6 +83,11 @@ namespace Gratt
         /// <param name="kindEqualityComparer">
         /// An <see cref="IEqualityComparer{T}"/> to use to compare one token
         /// kind with another for equality.</param>
+        /// <param name="eoi">A token kind that marks the end of input.</param>
+        /// <param name="eoiErrorSelector">
+        /// A function that projects an <see cref="Exception"/> when the
+        /// end-of-input token is not the the last token of the
+        /// <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
         /// A function that maps a token to a prefix parser function. If the
         /// given token is not a prefix then the function must fail by throwing
@@ -101,10 +112,12 @@ namespace Gratt
             Parse<TKind, TToken, TPrecedence, TResult>(
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
+                TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
                 IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, precedenceComparer, kindEqualityComparer,
+                  eoi, eoiErrorSelector,
                   (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
 
         /// <summary>
@@ -121,6 +134,11 @@ namespace Gratt
         /// <typeparam name="TResult">The type of the result.</typeparam>
         /// <param name="state">A user-defined state.</param>
         /// <param name="initialPrecedence">The initial precedence.</param>
+        /// <param name="eoi">A token kind that marks the end of input.</param>
+        /// <param name="eoiErrorSelector">
+        /// A function that projects an <see cref="Exception"/> when the
+        /// end-of-input token is not the the last token of the
+        /// <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
         /// A function that maps a token to a prefix parser function. If the
         /// given token is not a prefix then the function must fail by throwing
@@ -145,10 +163,12 @@ namespace Gratt
             Parse<TState, TKind, TToken, TPrecedence, TResult>(
                 TState state,
                 TPrecedence initialPrecedence,
+                TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
                 IEnumerable<(TKind, TToken)> tokens) =>
             Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
+                  eoi, eoiErrorSelector,
                   prefixSelector, infixSelector, tokens);
 
         /// <summary>
@@ -170,6 +190,11 @@ namespace Gratt
         /// <param name="kindEqualityComparer">
         /// An <see cref="IEqualityComparer{T}"/> to use to compare one token
         /// kind with another for equality.</param>
+        /// <param name="eoi">A token kind that marks the end of input.</param>
+        /// <param name="eoiErrorSelector">
+        /// A function that projects an <see cref="Exception"/> when the
+        /// end-of-input token is not the the last token of the
+        /// <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
         /// A function that maps a token to a prefix parser function. If the
         /// given token is not a prefix then the function must fail by throwing
@@ -189,12 +214,12 @@ namespace Gratt
         /// must represent the end-of-input otherwise the behavior of this
         /// function, and by extension parsing, is undefined.
         /// </remarks>
-
         public static TResult
             Parse<TState, TKind, TToken, TPrecedence, TResult>(
                 TState state,
                 TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
                 IEqualityComparer<TKind> kindEqualityComparer,
+                TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
                 IEnumerable<(TKind, TToken)> tokens)
@@ -206,7 +231,9 @@ namespace Gratt
                                                                         kindEqualityComparer,
                                                                         prefixSelector, infixSelector,
                                                                         e);
-            return parser.Parse(initialPrecedence);
+            var result = parser.Parse(initialPrecedence);
+            parser.Read(eoi, (TKind _, (TKind, TToken Token) a) => eoiErrorSelector(a.Token));
+            return result;
         }
     }
 

@@ -50,11 +50,14 @@ represent (prefix or infix) parselets. Instead, it relies on them being simple
 functions:
 
 ```c#
+// version 2.0+
+
 public static TResult
     Parse<TState, TKind, TToken, TPrecedence, TResult>(
         TState state,
         TPrecedence initialPrecedence, IComparer<TPrecedence> precedenceComparer,
         IEqualityComparer<TKind> kindEqualityComparer,
+        TKind eoi, Func<TToken, Exception> eoiErrorSelector,
         Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixFunction,
         Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixFunction,
         IEnumerable<(TKind, TToken)> lexer)
@@ -67,6 +70,9 @@ parameter in order:
 - the initial precedence (this is usually 0 if `TPrecedence` is an `int`)
 - a precedence comparer
 - an equality comparer that can compare two token kinds
+- a token kind marking _end of input_ (EOI)
+- a function used to project an `Exception` when the EOI token is not the
+  the last token of the tokens sequence
 - a prefix function
 - an infix function
 - a sequence of token kind and token pairs (2-tuple) yielded by a lexer

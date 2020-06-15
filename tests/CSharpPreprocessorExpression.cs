@@ -41,6 +41,7 @@ namespace CSharp.Preprocessing
             Gratt.Parser.Parse(
                 new ParseContext(expression, symbolPredicate),
                 Precedence.Default,
+                TokenKind.Eoi, t => new SyntaxErrorException($"Unexpected <{t.Kind}> token at offset {t.Offset}."),
                 (_, token, __) => Spec.Instance.Prefix(token),
                 (kind, _, __) => Spec.Instance.Infix(kind),
                 from t in Scanner.Scan(expression)
@@ -143,8 +144,11 @@ namespace CSharp.Preprocessing
             },
 
             { TokenKind.Bang, (_, parser) => !parser.Parse(Precedence.Prefix) },
-
-            { TokenKind.AmpersandAmpersand, Precedence.LogicalAnd, (a, rbp, p) => a && p.Parse(rbp) },
+            // NOTE! The "&&" evaluation cannot be short-circuited since the
+            //       right side needs to be parsed to ensure it is syntactically
+            //       correct and the end-of-input is reached by full parsing of
+            //       the input.
+            { TokenKind.AmpersandAmpersand, Precedence.LogicalAnd, (a, rbp, p) => p.Parse(rbp) is {} b && a && b },
             { TokenKind.PipePipe          , Precedence.LogicalOr , (a, b) => a || b },
             { TokenKind.EqualEqual        , Precedence.Relational, (a, b) => a == b },
             { TokenKind.BangEqual         , Precedence.Relational, (a, b) => a != b },
