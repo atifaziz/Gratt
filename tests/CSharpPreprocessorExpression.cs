@@ -20,9 +20,10 @@ namespace CSharp.Preprocessing
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using Parser = Gratt.Parser<ParseContext, TokenKind, Token, Precedence, bool>;
-    using PrefixParselet = System.Func<Token, Gratt.Parser<ParseContext, TokenKind, Token, Precedence, bool>, bool>;
-    using InfixParselet = System.Func<Token, bool, Gratt.Parser<ParseContext, TokenKind, Token, Precedence, bool>, bool>;
+    using Token = Token<TokenKind>;
+    using Parser = Gratt.Parser<ParseContext, TokenKind, Token<TokenKind>, Precedence, bool>;
+    using PrefixParselet = System.Func<Token<TokenKind>, Gratt.Parser<ParseContext, TokenKind, Token<TokenKind>, Precedence, bool>, bool>;
+    using InfixParselet = System.Func<Token<TokenKind>, bool, Gratt.Parser<ParseContext, TokenKind, Token<TokenKind>, Precedence, bool>, bool>;
 
     //
     // This is an implementation of a C# pre-processing expression parser found in conditional
@@ -75,30 +76,30 @@ namespace CSharp.Preprocessing
         Eoi,
     }
 
-    readonly struct Token : IEquatable<Token>
+    readonly struct Token<T> : IEquatable<Token<T>>
     {
-        public readonly TokenKind Kind;
+        public readonly T   Kind;
         public readonly int StartOffset;
         public readonly int EndOffset;
 
-        public Token(TokenKind kind, int startOffset, int endOffset) =>
+        public Token(T kind, int startOffset, int endOffset) =>
             (Kind, StartOffset, EndOffset) = (kind, startOffset, endOffset);
 
         public int Length => EndOffset - StartOffset;
 
-        public bool Equals(Token other) =>
-            Kind == other.Kind
+        public bool Equals(Token<T> other) =>
+            EqualityComparer<T>.Default.Equals(Kind, other.Kind)
             && StartOffset.Equals(other.StartOffset)
             && EndOffset.Equals(other.EndOffset);
 
         public override bool Equals(object obj) =>
-            obj is Token other && Equals(other);
+            obj is Token<T> other && Equals(other);
 
         public override int GetHashCode() =>
-            unchecked(((((int)Kind * 397) ^ StartOffset.GetHashCode()) * 397) ^ EndOffset.GetHashCode());
+            unchecked((((EqualityComparer<T>.Default.GetHashCode(Kind) * 397) ^ StartOffset.GetHashCode()) * 397) ^ EndOffset.GetHashCode());
 
-        public static bool operator ==(Token left, Token right) => left.Equals(right);
-        public static bool operator !=(Token left, Token right) => !left.Equals(right);
+        public static bool operator ==(Token<T> left, Token<T> right) => left.Equals(right);
+        public static bool operator !=(Token<T> left, Token<T> right) => !left.Equals(right);
 
         public override string ToString() =>
             $"{Kind} [{StartOffset}..{EndOffset})";
