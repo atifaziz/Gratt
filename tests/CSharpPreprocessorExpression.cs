@@ -89,8 +89,8 @@ namespace CSharp.Preprocessing
 
         public bool Equals(Token<T> other) =>
             EqualityComparer<T>.Default.Equals(Kind, other.Kind)
-            && StartOffset.Equals(other.StartOffset)
-            && EndOffset.Equals(other.EndOffset);
+            && StartOffset == other.StartOffset
+            && EndOffset == other.EndOffset;
 
         public override bool Equals(object obj) =>
             obj is Token<T> other && Equals(other);
