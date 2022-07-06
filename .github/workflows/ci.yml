@@ -23,7 +23,7 @@ jobs:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
     strategy:
       matrix:
-        os: [windows-2019, macOS-10.14, ubuntu-16.04]
+        os: [windows-2019, macOS-10.15, ubuntu-18.04]
 
     steps:
 
