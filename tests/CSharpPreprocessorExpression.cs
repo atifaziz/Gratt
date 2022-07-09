@@ -92,11 +92,11 @@ namespace CSharp.Preprocessing
             EqualityComparer<T>.Default.Equals(Kind, other.Kind)
             && Offset == other.Offset && Length == other.Length;
 
-        public override bool Equals(object obj) =>
+        public override bool Equals(object? obj) =>
             obj is Token<T> other && Equals(other);
 
         public override int GetHashCode() =>
-            unchecked((((EqualityComparer<T>.Default.GetHashCode(Kind) * 397) ^ Offset.GetHashCode()) * 397) ^ EndOffset.GetHashCode());
+            unchecked((((Kind is { } kind ? EqualityComparer<T>.Default.GetHashCode(kind) * 397 : 0) ^ Offset.GetHashCode()) * 397) ^ EndOffset.GetHashCode());
 
         public static bool operator ==(Token<T> left, Token<T> right) => left.Equals(right);
         public static bool operator !=(Token<T> left, Token<T> right) => !left.Equals(right);

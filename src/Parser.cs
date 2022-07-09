@@ -253,7 +253,7 @@ namespace Gratt
         readonly Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixSelector;
         readonly Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> _infixSelector;
         (bool, TKind, TToken) _next;
-        IEnumerator<(TKind, TToken)> _lexer;
+        IEnumerator<(TKind, TToken)>? _lexer;
 
         internal Parser(TState state,
                         IComparer<TPrecedence> precedenceComparer,

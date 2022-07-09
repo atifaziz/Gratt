@@ -84,7 +84,7 @@ namespace Gratt.Tests
             var e =
                 Assert.Throws<SyntaxErrorException>(() =>
                     PreprocessorExpression.Evaluate(expression, _ => false));
-            Assert.That(e.Message, Is.EqualTo(message));
+            Assert.That(e?.Message, Is.EqualTo(message));
         }
 
         static void Test(string expression, string symbolsString, bool expected)
