@@ -90,7 +90,7 @@ namespace Gratt.Tests
         static void Test(string expression, string symbolsString, bool expected)
         {
             var symbols =
-                 from s in Regex.Split(symbolsString ?? string.Empty, @"[\s,;|+]")
+                 from s in Regex.Split(symbolsString, @"[\s,;|+]")
                  select s.Trim() into s
                  where s.Length > 0
                  select s;
