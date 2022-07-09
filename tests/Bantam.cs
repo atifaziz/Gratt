@@ -449,7 +449,7 @@ namespace Bantam
     static class BantamParser
     {
         public static Expression Parse(string source) =>
-            Parser.Parse(0, Eof, t => new Exception(), 
+            Parser.Parse(0, Eof, t => new Exception(),
                 (type, _) => Spec.Instance.Prefix(type),
                 (type, _) => Spec.Instance.Infix(type),
                 from t in Lexer.Lex(source)
