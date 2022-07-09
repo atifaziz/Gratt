@@ -18,6 +18,7 @@ namespace Gratt
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using Unit = System.ValueTuple;
 
     static partial class Parser
@@ -59,7 +60,7 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> tokens) =>
+                ILexer<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, eoi, eoiErrorSelector,
                   (k, t, _) => prefixSelector(k, t), (k, t, _) => infixSelector(k, t), tokens);
 
@@ -107,7 +108,7 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> tokens) =>
+                ILexer<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, precedenceComparer, kindEqualityComparer,
                   eoi, eoiErrorSelector,
                   (k, t, _) => prefixSelector(k, t), (k, t, _) => infixSelector(k, t), tokens);
@@ -154,7 +155,7 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> tokens) =>
+                ILexer<(TKind, TToken)> tokens) =>
             Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
                   eoi, eoiErrorSelector,
                   prefixSelector, infixSelector, tokens);
@@ -207,9 +208,9 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                IEnumerable<(TKind, TToken)> tokens)
+                ILexer<(TKind, TToken)> tokens)
         {
-            using var e = tokens.GetEnumerator();
+            using var e = tokens.GetTokens();
             var parser =
                 new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
                                                                         precedenceComparer,
@@ -237,15 +238,14 @@ namespace Gratt
         readonly IEqualityComparer<TKind> _tokenEqualityComparer;
         readonly Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> _prefixSelector;
         readonly Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> _infixSelector;
-        (bool, TKind, TToken) _next;
-        IEnumerator<(TKind, TToken)>? _lexer;
+        ITokenStream<(TKind, TToken)> _lexer;
 
         internal Parser(TState state,
                         IComparer<TPrecedence> precedenceComparer,
                         IEqualityComparer<TKind> tokenEqualityComparer,
                         Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                         Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                        IEnumerator<(TKind, TToken)> lexer)
+                        ITokenStream<(TKind, TToken)> lexer)
         {
             State = state;
             _precedenceComparer = precedenceComparer;
@@ -334,7 +334,7 @@ namespace Gratt
         public (TKind, TToken) Peek()
         {
             var (kind, token) = Read();
-            Unread(kind, token);
+            _lexer.Unread((kind, token));
             return (kind, token);
         }
 
@@ -347,35 +347,89 @@ namespace Gratt
         /// parsing.
         /// </exception>
 
-        public (TKind, TToken) Read()
+        public (TKind, TToken) Read() =>
+            _lexer.TryRead(out var result) ? result : throw new InvalidOperationException();
+    }
+
+    partial interface ILexer<T>
+    {
+        ITokenStream<T> GetTokens();
+    }
+
+    sealed class Lexer<T> : ILexer<T>
+    {
+        readonly IEnumerable<T> _tokens;
+
+        public Lexer(IEnumerable<T> tokens) => _tokens = tokens;
+        public ITokenStream<T> GetTokens() => new TokenStream<T>(_tokens.GetEnumerator());
+    }
+
+    partial interface ITokenStream<T> : IDisposable
+    {
+        bool TryRead([MaybeNullWhen(false)] out T result);
+        void Unread(T item);
+    }
+
+    sealed class TokenStream<T> : ITokenStream<T>
+    {
+        (bool, T) _next;
+        IEnumerator<T>? _enumerator;
+
+        public TokenStream(IEnumerator<T> enumerator) =>
+            _enumerator = enumerator;
+
+        public void Dispose() => _enumerator?.Dispose();
+
+        public IEnumerator<T> Enumerator => _enumerator ?? throw new InvalidOperationException();
+
+        public bool TryRead([MaybeNullWhen(false)] out T result)
         {
             switch (_next)
             {
-                case (true, var kind, var token):
+                case (true, var item):
                     _next = default;
-                    return (kind, token);
+                    result = item;
+                    return true;
                 default:
-                    switch (_lexer)
+                    switch (_enumerator)
                     {
                         case null:
-                            throw new InvalidOperationException();
+                            result = default;
+                            return false;
                         case var e:
                             if (!e.MoveNext())
                             {
-                                _lexer.Dispose();
-                                _lexer = null;
-                                throw new InvalidOperationException();
+                                _enumerator.Dispose();
+                                _enumerator = null;
+                                result = default;
+                                return false;
                             }
-                            var (kind, token) = e.Current;
-                            return (kind, token);
+                            result = e.Current;
+                            return true;
                     }
             }
         }
 
-        void Unread(TKind kind, TToken token) => _next = _next switch
+        public void Unread(T item)
         {
-            (true, _, _) => throw new InvalidOperationException(),
-            _ => (true, kind, token)
-        };
+            _next = _next switch
+            {
+                (true, _) => throw new InvalidOperationException(),
+                _ => (true, item)
+            };
+        }
+    }
+
+    static partial class Extensions
+    {
+        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T>(tokens);
+
+        public static bool TryPeek<T>(this ITokenStream<T> source, [MaybeNullWhen(false)] out T result)
+        {
+            if (!source.TryRead(out result))
+                return false;
+            source.Unread(result);
+            return true;
+        }
     }
 }

@@ -452,8 +452,7 @@ namespace Bantam
             Parser.Parse(0, Eof, _ => new Exception(),
                 (type, _) => Spec.Instance.Prefix(type),
                 (type, _) => Spec.Instance.Infix(type),
-                from t in Lexer.Lex(source)
-                select (t.Type, t));
+                Lexer.Lex(source).Select(t => (t.Type, t)).ToLexer());
 
         sealed class Spec : IEnumerable
         {
