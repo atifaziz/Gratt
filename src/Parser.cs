@@ -65,7 +65,7 @@ namespace Gratt
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
                 IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, eoi, eoiErrorSelector,
-                  (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
+                  (k, t, _) => prefixSelector(k, t), (k, t, _) => infixSelector(k, t), tokens);
 
         /// <summary>
         /// Parses tokens into a result using top-down operator precedence.
@@ -118,7 +118,7 @@ namespace Gratt
                 IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, precedenceComparer, kindEqualityComparer,
                   eoi, eoiErrorSelector,
-                  (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
+                  (k, t, _) => prefixSelector(k, t), (k, t, _) => infixSelector(k, t), tokens);
 
         /// <summary>
         /// Parses tokens into a result using top-down operator precedence. A
