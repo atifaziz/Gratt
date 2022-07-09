@@ -60,7 +60,7 @@ namespace Gratt.Tests
         [TestCase("false1", "false1", true)]
         [TestCase("(a || b) && (c || d)", "a b", false)]
         [TestCase("a || b && c || d", "a b", true)]
-        public void Evaluate(string expression, string symbols, bool expected) =>
+        public void Evaluate(string expression, string? symbols, bool expected) =>
             Test(expression, symbols, expected);
 
         [TestCase("", "Unexpected <Eoi> token at offset 0.")]
@@ -87,10 +87,10 @@ namespace Gratt.Tests
             Assert.That(e?.Message, Is.EqualTo(message));
         }
 
-        static void Test(string expression, string symbolsString, bool expected)
+        static void Test(string expression, string? symbolsString, bool expected)
         {
             var symbols =
-                 from s in Regex.Split(symbolsString, @"[\s,;|+]")
+                 from s in Regex.Split(symbolsString ?? string.Empty, @"[\s,;|+]")
                  select s.Trim() into s
                  where s.Length > 0
                  select s;
