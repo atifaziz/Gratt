@@ -23,9 +23,8 @@ namespace Gratt
     static partial class Parser
     {
         /// <summary>
-        /// Parses tokens into a result using top-down operator precedence. A
-        /// default comparer is used to compare precedence for order and token
-        /// kinds for equality.
+        /// Parses tokens into a result using top-down operator precedence. A default comparer is
+        /// used to compare precedence for order and token kinds for equality.
         /// </summary>
         /// <typeparam name="TKind">The type of token kinds.</typeparam>
         /// <typeparam name="TToken">The type of tokens.</typeparam>
@@ -34,27 +33,24 @@ namespace Gratt
         /// <param name="initialPrecedence">The initial precedence.</param>
         /// <param name="eoi">A token kind that marks the end of input.</param>
         /// <param name="eoiErrorSelector">
-        /// A function that projects an <see cref="Exception"/> when the
-        /// end-of-input token is not the the last token of the
-        /// <paramref name="tokens"/> sequence.</param>
+        /// A function that projects an <see cref="Exception"/> when the end-of-input token is not
+        /// the the last token of the <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
-        /// A function that maps a token to a prefix parser function. If the
-        /// given token is not a prefix then the function must fail by throwing
-        /// an <see cref="Exception"/> or derived object. The prefix parser
-        /// function receives the token and parser as arguments and returns
-        /// the result of parsing.</param>
+        /// A function that maps a token to a prefix parser function. If the given token is not a
+        /// prefix then the function must fail by throwing an <see cref="Exception"/> or derived
+        /// object. The prefix parser function receives the token and parser as arguments and
+        /// returns the result of parsing.</param>
         /// <param name="infixSelector">
-        /// A function that attempts to map a token to an infix parser
-        /// function. The infix parser function receives the token, the left
-        /// operand/result and parser as arguments and returns the result of
-        /// parsing.</param>
+        /// A function that attempts to map a token to an infix parser function. The infix parser
+        /// function receives the token, the left operand/result and parser as arguments and returns
+        /// the result of parsing.</param>
         /// <param name="tokens">
         /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="tokens"/>
-        /// must represent the end-of-input otherwise the behavior of this
-        /// function, and by extension parsing, is undefined.
+        /// The last token kind and token pair yielded by the <see cref="tokens"/> must represent
+        /// the end-of-input otherwise the behavior of this function, and by extension parsing, is
+        /// undefined.
         /// </remarks>
 
         public static TResult
@@ -68,9 +64,8 @@ namespace Gratt
                   (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
 
         /// <summary>
-        /// Parses tokens into a result using top-down operator precedence.
-        /// Additional parameters specify how precedence compares in order and
-        /// token kind in terms of equality.
+        /// Parses tokens into a result using top-down operator precedence. Additional parameters
+        /// specify how precedence compares in order and token kind in terms of equality.
         /// </summary>
         /// <typeparam name="TKind">The type of token kinds.</typeparam>
         /// <typeparam name="TToken">The type of tokens.</typeparam>
@@ -78,34 +73,31 @@ namespace Gratt
         /// <typeparam name="TResult">The type of the result.</typeparam>
         /// <param name="initialPrecedence">The initial precedence.</param>
         /// <param name="precedenceComparer">
-        /// An <see cref="IComparer{T}"/> to use to compare one precedence
-        /// with another for order.</param>
+        /// An <see cref="IComparer{T}"/> to use to compare one precedence with another for
+        /// order.</param>
         /// <param name="kindEqualityComparer">
-        /// An <see cref="IEqualityComparer{T}"/> to use to compare one token
-        /// kind with another for equality.</param>
+        /// An <see cref="IEqualityComparer{T}"/> to use to compare one token kind with another for
+        /// equality.</param>
         /// <param name="eoi">A token kind that marks the end of input.</param>
         /// <param name="eoiErrorSelector">
-        /// A function that projects an <see cref="Exception"/> when the
-        /// end-of-input token is not the the last token of the
-        /// <paramref name="tokens"/> sequence.</param>
+        /// A function that projects an <see cref="Exception"/> when the end-of-input token is not
+        /// the the last token of the <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
-        /// A function that maps a token to a prefix parser function. If the
-        /// given token is not a prefix then the function must fail by throwing
-        /// an <see cref="Exception"/> or derived object. The prefix parser
-        /// function receives the token and parser as arguments and returns
-        /// the result of parsing.</param>
+        /// A function that maps a token to a prefix parser function. If the given token is not a
+        /// prefix then the function must fail by throwing an <see cref="Exception"/> or derived
+        /// object. The prefix parser function receives the token and parser as arguments and
+        /// returns the result of parsing.</param>
         /// <param name="infixSelector">
-        /// A function that attempts to map a token to an infix parser
-        /// function. The infix parser function receives the token, the left
-        /// operand/result and parser as arguments and returns the result of
-        /// parsing.</param>
+        /// A function that attempts to map a token to an infix parser function. The infix parser
+        /// function receives the token, the left operand/result and parser as arguments and returns
+        /// the result of parsing.</param>
         /// <param name="tokens">
         /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="tokens"/>
-        /// must represent the end-of-input otherwise the behavior of this
-        /// function, and by extension parsing, is undefined.
+        /// The last token kind and token pair yielded by the <see cref="tokens"/> must represent
+        /// the end-of-input otherwise the behavior of this function, and by extension parsing, is
+        /// undefined.
         /// </remarks>
 
         public static TResult
@@ -121,11 +113,10 @@ namespace Gratt
                   (k, t, s) => prefixSelector(k, t), (k, t, s) => infixSelector(k, t), tokens);
 
         /// <summary>
-        /// Parses tokens into a result using top-down operator precedence. A
-        /// default comparer is used to compare precedence for order and token
-        /// kinds for equality. An additional parameter specifies some user-
-        /// defined state to associate with the parser object used during
-        /// parsing.
+        /// Parses tokens into a result using top-down operator precedence. A default comparer is
+        /// used to compare precedence for order and token kinds for equality. An additional
+        /// parameter specifies some user- defined state to associate with the parser object used
+        /// during parsing.
         /// </summary>
         /// <typeparam name="TState">The type of user-defined state object.</typeparam>
         /// <typeparam name="TKind">The type of token kinds.</typeparam>
@@ -136,27 +127,24 @@ namespace Gratt
         /// <param name="initialPrecedence">The initial precedence.</param>
         /// <param name="eoi">A token kind that marks the end of input.</param>
         /// <param name="eoiErrorSelector">
-        /// A function that projects an <see cref="Exception"/> when the
-        /// end-of-input token is not the the last token of the
-        /// <paramref name="tokens"/> sequence.</param>
+        /// A function that projects an <see cref="Exception"/> when the end-of-input token is not
+        /// the the last token of the <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
-        /// A function that maps a token to a prefix parser function. If the
-        /// given token is not a prefix then the function must fail by throwing
-        /// an <see cref="Exception"/> or derived object. The prefix parser
-        /// function receives the token and parser as arguments and returns
-        /// the result of parsing.</param>
+        /// A function that maps a token to a prefix parser function. If the given token is not a
+        /// prefix then the function must fail by throwing an <see cref="Exception"/> or derived
+        /// object. The prefix parser function receives the token and parser as arguments and
+        /// returns the result of parsing.</param>
         /// <param name="infixSelector">
-        /// A function that attempts to map a token to an infix parser
-        /// function. The infix parser function receives the token, the left
-        /// operand/result and parser as arguments and returns the result of
-        /// parsing.</param>
+        /// A function that attempts to map a token to an infix parser function. The infix parser
+        /// function receives the token, the left operand/result and parser as arguments and returns
+        /// the result of parsing.</param>
         /// <param name="tokens">
         /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="tokens"/>
-        /// must represent the end-of-input otherwise the behavior of this
-        /// function, and by extension parsing, is undefined.
+        /// The last token kind and token pair yielded by the <see cref="tokens"/> must represent
+        /// the end-of-input otherwise the behavior of this function, and by extension parsing, is
+        /// undefined.
         /// </remarks>
 
         public static TResult
@@ -172,10 +160,9 @@ namespace Gratt
                   prefixSelector, infixSelector, tokens);
 
         /// <summary>
-        /// Parses tokens into a result using top-down operator precedence.
-        /// Additional parameters specify how precedence compares in order,
-        /// how token kinds compare in terms of equality and some user-defined
-        /// state to associate with the parser object used during parsing.
+        /// Parses tokens into a result using top-down operator precedence. Additional parameters
+        /// specify how precedence compares in order, how token kinds compare in terms of equality
+        /// and some user-defined state to associate with the parser object used during parsing.
         /// </summary>
         /// <typeparam name="TState">The type of user-defined state object.</typeparam>
         /// <typeparam name="TKind">The type of token kinds.</typeparam>
@@ -185,35 +172,33 @@ namespace Gratt
         /// <param name="state">A user-defined state.</param>
         /// <param name="initialPrecedence">The initial precedence.</param>
         /// <param name="precedenceComparer">
-        /// An <see cref="IComparer{T}"/> to use to compare one precedence
-        /// with another for order.</param>
+        /// An <see cref="IComparer{T}"/> to use to compare one precedence with another for
+        /// order.</param>
         /// <param name="kindEqualityComparer">
-        /// An <see cref="IEqualityComparer{T}"/> to use to compare one token
-        /// kind with another for equality.</param>
+        /// An <see cref="IEqualityComparer{T}"/> to use to compare one token kind with another for
+        /// equality.</param>
         /// <param name="eoi">A token kind that marks the end of input.</param>
         /// <param name="eoiErrorSelector">
-        /// A function that projects an <see cref="Exception"/> when the
-        /// end-of-input token is not the the last token of the
-        /// <paramref name="tokens"/> sequence.</param>
+        /// A function that projects an <see cref="Exception"/> when the end-of-input token is not
+        /// the the last token of the <paramref name="tokens"/> sequence.</param>
         /// <param name="prefixSelector">
-        /// A function that maps a token to a prefix parser function. If the
-        /// given token is not a prefix then the function must fail by throwing
-        /// an <see cref="Exception"/> or derived object. The prefix parser
-        /// function receives the token and parser as arguments and returns
-        /// the result of parsing.</param>
+        /// A function that maps a token to a prefix parser function. If the given token is not a
+        /// prefix then the function must fail by throwing an <see cref="Exception"/> or derived
+        /// object. The prefix parser function receives the token and parser as arguments and
+        /// returns the result of parsing.</param>
         /// <param name="infixSelector">
-        /// A function that attempts to map a token to an infix parser
-        /// function. The infix parser function receives the token, the left
-        /// operand/result and parser as arguments and returns the result of
-        /// parsing.</param>
+        /// A function that attempts to map a token to an infix parser function. The infix parser
+        /// function receives the token, the left operand/result and parser as arguments and returns
+        /// the result of parsing.</param>
         /// <param name="tokens">
         /// A sequence of token kind and token pairs produced by a tokens.</param>
         /// <returns>The result of parsing.</returns>
         /// <remarks>
-        /// The last token kind and token pair yielded by the <see cref="tokens"/>
-        /// must represent the end-of-input otherwise the behavior of this
-        /// function, and by extension parsing, is undefined.
+        /// The last token kind and token pair yielded by the <see cref="tokens"/> must represent
+        /// the end-of-input otherwise the behavior of this function, and by extension parsing, is
+        /// undefined.
         /// </remarks>
+
         public static TResult
             Parse<TState, TKind, TToken, TPrecedence, TResult>(
                 TState state,
@@ -309,8 +294,8 @@ namespace Gratt
         /// </summary>
         /// <param name="kind">The kind of token to match and read.</param>
         /// <returns>
-        /// A Boolean value that is <c>true</c> if the next token was matched
-        /// and read; otherwise <c>false</c>.</returns>
+        /// A Boolean value that is <c>true</c> if the next token was matched and read; otherwise
+        /// <c>false</c>.</returns>
 
         public bool Match(TKind kind)
         {
@@ -322,14 +307,13 @@ namespace Gratt
         }
 
         /// <summary>
-        /// Reads the next token and ensures it matches an expected kind
-        /// otherwise it throws a user-defined exception.
+        /// Reads the next token and ensures it matches an expected kind otherwise it throws a
+        /// user-defined exception.
         /// </summary>
         /// <param name="kind">The kind of token expected.</param>
         /// <param name="errorSelector">
-        /// A function that receives the expected token kind, the
-        /// actual token kind and token pair read and returns the
-        /// <see cref="Exception"/> to be thrown.</param>
+        /// A function that receives the expected token kind, the actual token kind and token pair
+        /// read and returns the <see cref="Exception"/> to be thrown.</param>
         /// <returns>The token that was read.</returns>
 
         public TToken Read(TKind kind, Func<TKind, (TKind, TToken), Exception> errorSelector)
@@ -359,8 +343,8 @@ namespace Gratt
         /// </summary>
         /// <returns>The token kind and token pair that was read.</returns>
         /// <exception cref="InvalidOperationException">
-        /// There are no more tokens to read and usually indicates an
-        /// implementation fault in parsing.
+        /// There are no more tokens to read and usually indicates an implementation fault in
+        /// parsing.
         /// </exception>
 
         public (TKind, TToken) Read()
