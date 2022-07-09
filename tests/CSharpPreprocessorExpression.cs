@@ -148,7 +148,7 @@ namespace CSharp.Preprocessing
             //       right side needs to be parsed to ensure it is syntactically
             //       correct and the end-of-input is reached by full parsing of
             //       the input.
-            { TokenKind.AmpersandAmpersand, Precedence.LogicalAnd, (a, rbp, p) => p.Parse(rbp) is {} b && a && b },
+            { TokenKind.AmpersandAmpersand, Precedence.LogicalAnd, (a, rbp, p) => p.Parse(rbp) is var b && a && b },
             { TokenKind.PipePipe          , Precedence.LogicalOr , (a, b) => a || b },
             { TokenKind.EqualEqual        , Precedence.Relational, (a, b) => a == b },
             { TokenKind.BangEqual         , Precedence.Relational, (a, b) => a != b },
