@@ -145,7 +145,7 @@ namespace Bantam
                     _ => (TokenType?)null
                 };
 
-                if (punctuator is TokenType t)
+                if (punctuator is { } t)
                 {
                     // Handle punctuation.
                     yield return new Token(t, c.ToString());
