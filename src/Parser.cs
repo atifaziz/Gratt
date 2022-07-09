@@ -356,12 +356,103 @@ namespace Gratt
         ITokenStream<T> GetTokens();
     }
 
-    sealed class Lexer<T> : ILexer<T>
+    sealed class Lexer<T, TBuffer> : ILexer<T>
     {
         readonly IEnumerable<T> _tokens;
+        readonly TokenBuffer<TBuffer, T> _buffer;
 
-        public Lexer(IEnumerable<T> tokens) => _tokens = tokens;
-        public ITokenStream<T> GetTokens() => new TokenStream<T>(_tokens.GetEnumerator());
+        public Lexer(IEnumerable<T> tokens, TokenBuffer<TBuffer, T> buffer)
+        {
+            _tokens = tokens;
+            _buffer = buffer;
+        }
+
+        public ITokenStream<T> GetTokens() => new TokenStream(_tokens.GetEnumerator(), _buffer);
+
+        sealed class TokenStream : ITokenStream<T>
+        {
+            TBuffer _next;
+            readonly TokenBuffer<TBuffer, T> _buffer;
+            IEnumerator<T>? _enumerator;
+
+            public TokenStream(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer)
+            {
+                _enumerator = enumerator;
+                _buffer = buffer;
+                _next = _buffer.Init;
+            }
+
+            public void Dispose() => _enumerator?.Dispose();
+
+            public bool TryRead([MaybeNullWhen(false)] out T result)
+            {
+                if (_enumerator is not { } enumerator)
+                {
+                    result = default;
+                    return false;
+                }
+
+                if (_buffer.TryDequeue(ref _next, out result))
+                    return true;
+
+                if (!enumerator.MoveNext())
+                {
+                    _enumerator.Dispose();
+                    _enumerator = null;
+                    result = default;
+                    return false;
+                }
+
+                result = enumerator.Current;
+                return true;
+            }
+
+            public void Unread(T item)
+            {
+                if (_enumerator is null)
+                    throw new InvalidOperationException();
+
+                if (!_buffer.TryEnqueue(ref _next, item))
+                    throw new InvalidOperationException();
+            }
+        }
+    }
+
+    abstract class TokenBuffer<TStore, T>
+    {
+        public abstract TStore Init { get; }
+        public abstract bool TryEnqueue(ref TStore store, T item);
+        public abstract bool TryDequeue(ref TStore store, [MaybeNullWhen(false)] out T item);
+    }
+
+    sealed class SingleTokenBuffer<T> : TokenBuffer<(bool, T), T>
+    {
+        public static readonly SingleTokenBuffer<T> Instance = new();
+
+        public override (bool, T) Init => default;
+
+        public override bool TryEnqueue(ref (bool, T) store, T item)
+        {
+            if (store is (true, _))
+                return false;
+
+            store = (true, item);
+            return true;
+        }
+
+        public override bool TryDequeue(ref (bool, T) store, [MaybeNullWhen(false)] out T item)
+        {
+            switch (store)
+            {
+                case (false, _):
+                    item = default;
+                    return false;
+                case (true, var some):
+                    item = some;
+                    store = Init;
+                    return true;
+            }
+        }
     }
 
     partial interface ITokenStream<T> : IDisposable
@@ -370,59 +461,9 @@ namespace Gratt
         void Unread(T item);
     }
 
-    sealed class TokenStream<T> : ITokenStream<T>
-    {
-        (bool, T) _next;
-        IEnumerator<T>? _enumerator;
-
-        public TokenStream(IEnumerator<T> enumerator) =>
-            _enumerator = enumerator;
-
-        public void Dispose() => _enumerator?.Dispose();
-
-        public IEnumerator<T> Enumerator => _enumerator ?? throw new InvalidOperationException();
-
-        public bool TryRead([MaybeNullWhen(false)] out T result)
-        {
-            switch (_next)
-            {
-                case (true, var item):
-                    _next = default;
-                    result = item;
-                    return true;
-                default:
-                    switch (_enumerator)
-                    {
-                        case null:
-                            result = default;
-                            return false;
-                        case var e:
-                            if (!e.MoveNext())
-                            {
-                                _enumerator.Dispose();
-                                _enumerator = null;
-                                result = default;
-                                return false;
-                            }
-                            result = e.Current;
-                            return true;
-                    }
-            }
-        }
-
-        public void Unread(T item)
-        {
-            _next = _next switch
-            {
-                (true, _) => throw new InvalidOperationException(),
-                _ => (true, item)
-            };
-        }
-    }
-
     static partial class Extensions
     {
-        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T>(tokens);
+        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T, (bool, T)>(tokens, SingleTokenBuffer<T>.Instance);
 
         public static bool TryPeek<T>(this ITokenStream<T> source, [MaybeNullWhen(false)] out T result)
         {
