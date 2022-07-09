@@ -349,7 +349,7 @@ namespace Bantam
         /// </summary>
 
         public static readonly InfixParselet Assign =
-            (token, left, parser) =>
+            (_, left, parser) =>
                 left is NameExpression nameExpression
                 ? new AssignExpression(nameExpression.Name, parser.Parse(Precedence.Assignment - 1))
                 : throw new ParseException("The left-hand side of an assignment must be a name.");
@@ -369,7 +369,7 @@ namespace Bantam
         /// </summary>
 
         public static readonly InfixParselet Call =
-            (token, left, parser) =>
+            (_, left, parser) =>
             {
                 // Parse the comma-separated arguments until we hit, ")".
                 var args = ImmutableArray.CreateBuilder<Expression>();
@@ -389,7 +389,7 @@ namespace Bantam
         /// </summary>
 
         public static readonly InfixParselet Conditional =
-            (token, left, parser) =>
+            (_, left, parser) =>
             {
                 var thenArm = parser.Parse(0);
                 parser.Read(Colon, delegate { throw new ParseException("Expected ':'."); });
@@ -402,7 +402,7 @@ namespace Bantam
         /// </summary>
 
         public static readonly PrefixParselet Group =
-            (token, parser) =>
+            (_, parser) =>
             {
                 var expression = parser.Parse(0);
                 parser.Read(RightParen, delegate { throw new ParseException("Expected ')'."); });
@@ -414,7 +414,7 @@ namespace Bantam
         /// </summary>
 
         public static readonly PrefixParselet Name =
-            (token, parser) => new NameExpression(token.Text);
+            (token, _) => new NameExpression(token.Text);
 
         /// <summary>
         /// Generic infix parselet for an unary arithmetic operator. Parses postfix
@@ -422,7 +422,7 @@ namespace Bantam
         /// </summary>
 
         public static readonly InfixParselet PostfixOperator =
-            (token, left, parser) =>
+            (token, left, _) =>
                 new PostfixExpression(left, token.Type);
 
         /// <summary>
@@ -449,7 +449,7 @@ namespace Bantam
     static class BantamParser
     {
         public static Expression Parse(string source) =>
-            Parser.Parse(0, Eof, t => new Exception(),
+            Parser.Parse(0, Eof, _ => new Exception(),
                 (type, _) => Spec.Instance.Prefix(type),
                 (type, _) => Spec.Instance.Infix(type),
                 from t in Lexer.Lex(source)
@@ -457,7 +457,7 @@ namespace Bantam
 
         sealed class Spec : IEnumerable
         {
-            public static readonly Spec Instance = new Spec
+            public static readonly Spec Instance = new()
             {
                 // Register all of the parselets for the grammar.
 
@@ -486,8 +486,8 @@ namespace Bantam
                 { Caret,    Precedence.Exponent, Parselets.BinaryOperator(Precedence.Exponent, isRight: true ) },
             };
 
-            readonly Dictionary<TokenType, PrefixParselet> _prefixes = new Dictionary<TokenType, PrefixParselet>();
-            readonly Dictionary<TokenType, (int, InfixParselet)> _infixes = new Dictionary<TokenType, (int, InfixParselet)>();
+            readonly Dictionary<TokenType, PrefixParselet> _prefixes = new();
+            readonly Dictionary<TokenType, (int, InfixParselet)> _infixes = new();
 
             Spec() {}
 

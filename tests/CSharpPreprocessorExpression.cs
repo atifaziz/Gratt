@@ -42,8 +42,8 @@ namespace CSharp.Preprocessing
                 new ParseContext(expression, symbolPredicate),
                 Precedence.Default,
                 TokenKind.Eoi, t => new SyntaxErrorException($"Unexpected <{t.Kind}> token at offset {t.Offset}."),
-                (_, token, __) => Spec.Instance.Prefix(token),
-                (kind, _, __) => Spec.Instance.Infix(kind),
+                (_, token, _) => Spec.Instance.Prefix(token),
+                (kind, _, _) => Spec.Instance.Infix(kind),
                 from t in Scanner.Scan(expression)
                 where t.Kind != TokenKind.WhiteSpace
                 select (t.Kind, t));
@@ -126,7 +126,7 @@ namespace CSharp.Preprocessing
 
     sealed class Spec : IEnumerable
     {
-        public static readonly Spec Instance = new Spec
+        public static readonly Spec Instance = new()
         {
             { TokenKind.Symbol, (token, parser) => parser.State.SymbolPredicate(token.Substring(parser.State.SourceText)) },
 
@@ -134,7 +134,7 @@ namespace CSharp.Preprocessing
             { TokenKind.False, delegate { return false; } },
 
             {
-                TokenKind.LParen, (token, parser) =>
+                TokenKind.LParen, (_, parser) =>
                 {
                     var result = parser.Parse(0);
                     parser.Read(TokenKind.RParen, (TokenKind expected, (TokenKind, Token Token) actual) =>
@@ -156,8 +156,8 @@ namespace CSharp.Preprocessing
 
         Spec() { }
 
-        readonly Dictionary<TokenKind, PrefixParselet> _prefixes = new Dictionary<TokenKind, PrefixParselet>();
-        readonly Dictionary<TokenKind, (Precedence, InfixParselet)> _infixes = new Dictionary<TokenKind, (Precedence, InfixParselet)>();
+        readonly Dictionary<TokenKind, PrefixParselet> _prefixes = new();
+        readonly Dictionary<TokenKind, (Precedence, InfixParselet)> _infixes = new();
 
         void Add(TokenKind type, PrefixParselet prefix) =>
             _prefixes.Add(type, prefix);
@@ -166,17 +166,17 @@ namespace CSharp.Preprocessing
             _infixes.Add(type, (precedence, prefix));
 
         void Add(TokenKind type, Precedence precedence, Func<bool, bool, bool> f) =>
-            Add(type, precedence, (token, left, parser) => f(left, parser.Parse(precedence)));
+            Add(type, precedence, (_, left, parser) => f(left, parser.Parse(precedence)));
 
         void Add(TokenKind type, Precedence precedence, Func<bool, Precedence, Parser, bool> f) =>
-            Add(type, precedence, (token, left, parser) => f(left, precedence, parser));
+            Add(type, precedence, (_, left, parser) => f(left, precedence, parser));
 
         public PrefixParselet Prefix(Token token)
             => _prefixes.TryGetValue(token.Kind, out var v) ? v
              : throw new SyntaxErrorException($"Unexpected <{token.Kind}> token at offset {token.Offset}.");
 
         public (Precedence, InfixParselet)? Infix(TokenKind type) =>
-            _infixes.TryGetValue(type, out var v) ? ((Precedence, InfixParselet)?)v : null;
+            _infixes.TryGetValue(type, out var v) ? v : null;
 
         IEnumerator IEnumerable.GetEnumerator() =>
             _prefixes.Cast<object>().Concat(_infixes.Cast<object>()).GetEnumerator();
