@@ -349,6 +349,14 @@ namespace Gratt
 
         public (TKind, TToken) Read() =>
             _lexer.TryRead(out var result) ? result : throw new InvalidOperationException();
+
+        /// <summary>
+        /// Puts back a token kind and token pair to be returned by <see cref="Read"/>.
+        /// </summary>
+        /// <param name="kind">The kind of token.</param>
+        /// <param name="token">The token.</param>
+        public void Unread(TKind kind, TToken token) =>
+            _lexer.Unread((kind, token));
     }
 
     partial interface ILexer<T>
