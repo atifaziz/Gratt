@@ -402,55 +402,60 @@ namespace Gratt
             _lexer = _lexer.Unread((kind, token));
     }
 
-    static class TokenStream
+    interface ITokenStream<T> : IDisposable
     {
-        public static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator,
-                                                         TokenBuffer<TBuffer, T> buffer) =>
-            new TokenStream<T, TBuffer>(enumerator, buffer);
+        bool TryRead([MaybeNullWhen(false)] out T result);
+        ITokenStream<T> Unread(T item);
     }
 
-    sealed class TokenStream<T, TBuffer> : ITokenStream<T>
+    static class TokenStream
     {
-        TBuffer _next;
-        readonly TokenBuffer<TBuffer, T> _buffer;
-        IEnumerator<T>? _enumerator;
+        public static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer) =>
+            new Impl<T, TBuffer>(enumerator, buffer);
 
-        public TokenStream(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer)
+        sealed class Impl<T, TBuffer> : ITokenStream<T>
         {
-            _enumerator = enumerator;
-            _buffer = buffer;
-            _next = _buffer.Init;
-        }
+            TBuffer _next;
+            readonly TokenBuffer<TBuffer, T> _buffer;
+            IEnumerator<T>? _enumerator;
 
-        public void Dispose() => _enumerator?.Dispose();
-
-        public bool TryRead([MaybeNullWhen(false)] out T result)
-        {
-            if (_enumerator is not { } enumerator)
+            public Impl(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer)
             {
-                result = default;
-                return false;
+                _enumerator = enumerator;
+                _buffer = buffer;
+                _next = _buffer.Init;
             }
 
-            if (_buffer.TryPop(ref _next, out result))
+            public void Dispose() => _enumerator?.Dispose();
+
+            public bool TryRead([MaybeNullWhen(false)] out T result)
+            {
+                if (_enumerator is not { } enumerator)
+                {
+                    result = default;
+                    return false;
+                }
+
+                if (_buffer.TryPop(ref _next, out result))
+                    return true;
+
+                if (!enumerator.MoveNext())
+                {
+                    _enumerator.Dispose();
+                    _enumerator = null;
+                    result = default;
+                    return false;
+                }
+
+                result = enumerator.Current;
                 return true;
-
-            if (!enumerator.MoveNext())
-            {
-                _enumerator.Dispose();
-                _enumerator = null;
-                result = default;
-                return false;
             }
 
-            result = enumerator.Current;
-            return true;
+            public ITokenStream<T> Unread(T item)
+                => _enumerator is null ? throw new InvalidOperationException()
+                 : _buffer.TryPush(ref _next, item) ? this
+                 : _buffer.Expand(_next, _enumerator).Unread(item);
         }
-
-        public ITokenStream<T> Unread(T item)
-            => _enumerator is null ? throw new InvalidOperationException()
-             : _buffer.TryPush(ref _next, item) ? this
-             : _buffer.Expand(_next, _enumerator).Unread(item);
     }
 
     abstract class TokenBuffer<TStore, T>
@@ -546,22 +551,5 @@ namespace Gratt
 
         public override ITokenStream<T> Expand(TwoTokens<T> store, IEnumerator<T> enumerator) =>
             throw new InvalidOperationException();
-    }
-
-    partial interface ITokenStream<T> : IDisposable
-    {
-        bool TryRead([MaybeNullWhen(false)] out T result);
-        ITokenStream<T> Unread(T item);
-    }
-
-    static partial class Extensions
-    {
-        public static bool TryPeek<T>(this ITokenStream<T> source, [MaybeNullWhen(false)] out T result)
-        {
-            if (!source.TryRead(out result))
-                return false;
-            source.Unread(result);
-            return true;
-        }
     }
 }
