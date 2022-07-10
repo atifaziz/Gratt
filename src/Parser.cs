@@ -455,6 +455,50 @@ namespace Gratt
         }
     }
 
+    enum CountOf2 { Zero, One, Two }
+
+    sealed class TwoTokenBuffer<T> : TokenBuffer<(CountOf2 Count, T First, T Second), T>
+    {
+        public static readonly TwoTokenBuffer<T> Instance = new();
+
+        public override (CountOf2 Count, T First, T Second) Init => default;
+
+        public override bool TryEnqueue(ref (CountOf2 Count, T First, T Second) store, T item)
+        {
+            switch (store)
+            {
+                case (CountOf2.Zero, _, _):
+                    store.Count = CountOf2.One;
+                    store.First = item;
+                    return true;
+                case (CountOf2.One, var first, _):
+                    store = (CountOf2.Two, first, item);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        public override bool TryDequeue(ref (CountOf2 Count, T First, T Second) store, [MaybeNullWhen(false)] out T item)
+        {
+            switch (store)
+            {
+                case (CountOf2.One, var first, _):
+                    item = first;
+                    store = Init;
+                    return true;
+                case (CountOf2.Two, _, var second):
+                    item = second;
+                    store.Count = CountOf2.One;
+                    store.Second = default!;
+                    return true;
+                default:
+                    item = default;
+                    return false;
+            }
+        }
+    }
+
     partial interface ITokenStream<T> : IDisposable
     {
         bool TryRead([MaybeNullWhen(false)] out T result);
@@ -463,7 +507,7 @@ namespace Gratt
 
     static partial class Extensions
     {
-        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T, (bool, T)>(tokens, SingleTokenBuffer<T>.Instance);
+        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T, (CountOf2, T, T)>(tokens, TwoTokenBuffer<T>.Instance);
 
         public static bool TryPeek<T>(this ITokenStream<T> source, [MaybeNullWhen(false)] out T result)
         {
