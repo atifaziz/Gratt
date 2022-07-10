@@ -457,13 +457,15 @@ namespace Gratt
 
     enum CountOf2 { Zero, One, Two }
 
-    sealed class TwoTokenBuffer<T> : TokenBuffer<(CountOf2 Count, T First, T Second), T>
+    record struct TwoTokens<T>(CountOf2 Count, T First, T Second);
+
+    sealed class TwoTokenBuffer<T> : TokenBuffer<TwoTokens<T>, T>
     {
         public static readonly TwoTokenBuffer<T> Instance = new();
 
-        public override (CountOf2 Count, T First, T Second) Init => default;
+        public override TwoTokens<T> Init => default;
 
-        public override bool TryEnqueue(ref (CountOf2 Count, T First, T Second) store, T item)
+        public override bool TryEnqueue(ref TwoTokens<T> store, T item)
         {
             switch (store)
             {
@@ -472,14 +474,14 @@ namespace Gratt
                     store.First = item;
                     return true;
                 case (CountOf2.One, var first, _):
-                    store = (CountOf2.Two, first, item);
+                    store = new(CountOf2.Two, first, item);
                     return true;
                 default:
                     return false;
             }
         }
 
-        public override bool TryDequeue(ref (CountOf2 Count, T First, T Second) store, [MaybeNullWhen(false)] out T item)
+        public override bool TryDequeue(ref TwoTokens<T> store, [MaybeNullWhen(false)] out T item)
         {
             switch (store)
             {
@@ -507,7 +509,7 @@ namespace Gratt
 
     static partial class Extensions
     {
-        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T, (CountOf2, T, T)>(tokens, TwoTokenBuffer<T>.Instance);
+        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T, TwoTokens<T>>(tokens, TwoTokenBuffer<T>.Instance);
 
         public static bool TryPeek<T>(this ITokenStream<T> source, [MaybeNullWhen(false)] out T result)
         {
