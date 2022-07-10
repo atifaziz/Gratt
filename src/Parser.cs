@@ -60,7 +60,7 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                ILexer<(TKind, TToken)> tokens) =>
+                IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, eoi, eoiErrorSelector,
                   (k, t, _) => prefixSelector(k, t), (k, t, _) => infixSelector(k, t), tokens);
 
@@ -108,7 +108,7 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, Func<TToken, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, (TPrecedence, Func<TToken, TResult, Parser<Unit, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                ILexer<(TKind, TToken)> tokens) =>
+                IEnumerable<(TKind, TToken)> tokens) =>
             Parse(default(Unit), initialPrecedence, precedenceComparer, kindEqualityComparer,
                   eoi, eoiErrorSelector,
                   (k, t, _) => prefixSelector(k, t), (k, t, _) => infixSelector(k, t), tokens);
@@ -155,7 +155,7 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                ILexer<(TKind, TToken)> tokens) =>
+                IEnumerable<(TKind, TToken)> tokens) =>
             Parse(state, initialPrecedence, Comparer<TPrecedence>.Default, EqualityComparer<TKind>.Default,
                   eoi, eoiErrorSelector,
                   prefixSelector, infixSelector, tokens);
@@ -208,15 +208,16 @@ namespace Gratt
                 TKind eoi, Func<TToken, Exception> eoiErrorSelector,
                 Func<TKind, TToken, TState, Func<TToken, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>> prefixSelector,
                 Func<TKind, TToken, TState, (TPrecedence, Func<TToken, TResult, Parser<TState, TKind, TToken, TPrecedence, TResult>, TResult>)?> infixSelector,
-                ILexer<(TKind, TToken)> tokens)
+                IEnumerable<(TKind, TToken)> tokens)
         {
-            using var e = tokens.GetTokens();
+            using var e = tokens.GetEnumerator();
+            using var ts = TokenStream.Create(e, SingleTokenBuffer<(TKind, TToken)>.Instance);
             var parser =
                 new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
                                                                         precedenceComparer,
                                                                         kindEqualityComparer,
                                                                         prefixSelector, infixSelector,
-                                                                        e);
+                                                                        ts);
             var result = parser.Parse(initialPrecedence);
             parser.Read(eoi, (TKind _, (TKind, TToken Token) a) => eoiErrorSelector(a.Token));
             return result;
@@ -331,11 +332,53 @@ namespace Gratt
         /// </summary>
         /// <returns>The token kind and token pair that was peeked.</returns>
 
-        public (TKind, TToken) Peek()
+        public (TKind, TToken) Peek() => Peek(0);
+
+        /// <summary>
+        /// Peeks at the token kind and token pair at a specified offset (starting with zero meaning
+        /// immediately next) without consuming it.
+        /// </summary>
+        /// <returns>The token kind and token pair that was peeked.</returns>
+
+        public (TKind, TToken) Peek(int offset)
         {
-            var (kind, token) = Read();
-            _lexer.Unread((kind, token));
-            return (kind, token);
+            switch (offset)
+            {
+                case < 0:
+                    throw new ArgumentOutOfRangeException(nameof(offset), offset, null);
+                case 0:
+                {
+                    var (kind, token) = Read();
+                    Unread(kind, token);
+                    return (kind, token);
+                }
+                case 1:
+                {
+                    var (kind1, token1) = Read();
+                    var (kind2, token2) = Read();
+                    Unread(kind2, token2);
+                    Unread(kind1, token1);
+                    return (kind2, token2);
+                }
+                default:
+                {
+                    var stack = new Stack<(TKind, TToken)>(offset + 1);
+                    while (true)
+                    {
+                        var read = Read();
+                        stack.Push(read);
+                        if (offset-- == 0)
+                        {
+                            while (stack.Count > 0)
+                            {
+                                var (kind, token) = stack.Pop();
+                                Unread(kind, token);
+                            }
+                            return read;
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -356,81 +399,66 @@ namespace Gratt
         /// <param name="kind">The kind of token.</param>
         /// <param name="token">The token.</param>
         public void Unread(TKind kind, TToken token) =>
-            _lexer.Unread((kind, token));
+            _lexer = _lexer.Unread((kind, token));
     }
 
-    partial interface ILexer<T>
+    static class TokenStream
     {
-        ITokenStream<T> GetTokens();
+        public static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator,
+                                                         TokenBuffer<TBuffer, T> buffer) =>
+            new TokenStream<T, TBuffer>(enumerator, buffer);
     }
 
-    sealed class Lexer<T, TBuffer> : ILexer<T>
+    sealed class TokenStream<T, TBuffer> : ITokenStream<T>
     {
-        readonly IEnumerable<T> _tokens;
+        TBuffer _next;
         readonly TokenBuffer<TBuffer, T> _buffer;
+        IEnumerator<T>? _enumerator;
 
-        public Lexer(IEnumerable<T> tokens, TokenBuffer<TBuffer, T> buffer)
+        public TokenStream(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer)
         {
-            _tokens = tokens;
+            _enumerator = enumerator;
             _buffer = buffer;
+            _next = _buffer.Init;
         }
 
-        public ITokenStream<T> GetTokens() => new TokenStream(_tokens.GetEnumerator(), _buffer);
+        public void Dispose() => _enumerator?.Dispose();
 
-        sealed class TokenStream : ITokenStream<T>
+        public bool TryRead([MaybeNullWhen(false)] out T result)
         {
-            TBuffer _next;
-            readonly TokenBuffer<TBuffer, T> _buffer;
-            IEnumerator<T>? _enumerator;
-
-            public TokenStream(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer)
+            if (_enumerator is not { } enumerator)
             {
-                _enumerator = enumerator;
-                _buffer = buffer;
-                _next = _buffer.Init;
+                result = default;
+                return false;
             }
 
-            public void Dispose() => _enumerator?.Dispose();
-
-            public bool TryRead([MaybeNullWhen(false)] out T result)
-            {
-                if (_enumerator is not { } enumerator)
-                {
-                    result = default;
-                    return false;
-                }
-
-                if (_buffer.TryDequeue(ref _next, out result))
-                    return true;
-
-                if (!enumerator.MoveNext())
-                {
-                    _enumerator.Dispose();
-                    _enumerator = null;
-                    result = default;
-                    return false;
-                }
-
-                result = enumerator.Current;
+            if (_buffer.TryPop(ref _next, out result))
                 return true;
-            }
 
-            public void Unread(T item)
+            if (!enumerator.MoveNext())
             {
-                if (_enumerator is null)
-                    throw new InvalidOperationException();
-
-                if (!_buffer.TryEnqueue(ref _next, item))
-                    throw new InvalidOperationException();
+                _enumerator.Dispose();
+                _enumerator = null;
+                result = default;
+                return false;
             }
+
+            result = enumerator.Current;
+            return true;
         }
+
+        public ITokenStream<T> Unread(T item)
+            => _enumerator is null ? throw new InvalidOperationException()
+             : _buffer.TryPush(ref _next, item) ? this
+             : _buffer.Expand(_next, _enumerator).Unread(item);
     }
 
     abstract class TokenBuffer<TStore, T>
     {
         public abstract TStore Init { get; }
-        public abstract bool TryEnqueue(ref TStore store, T item);
-        public abstract bool TryDequeue(ref TStore store, [MaybeNullWhen(false)] out T item);
+        public abstract bool TryPush(ref TStore store, T item);
+        public abstract bool TryPop(ref TStore store, [MaybeNullWhen(false)] out T item);
+        public abstract ITokenStream<T> Expand(TStore store, IEnumerator<T> enumerator);
     }
 
     sealed class SingleTokenBuffer<T> : TokenBuffer<(bool, T), T>
@@ -439,7 +467,7 @@ namespace Gratt
 
         public override (bool, T) Init => default;
 
-        public override bool TryEnqueue(ref (bool, T) store, T item)
+        public override bool TryPush(ref (bool, T) store, T item)
         {
             if (store is (true, _))
                 return false;
@@ -448,7 +476,7 @@ namespace Gratt
             return true;
         }
 
-        public override bool TryDequeue(ref (bool, T) store, [MaybeNullWhen(false)] out T item)
+        public override bool TryPop(ref (bool, T) store, [MaybeNullWhen(false)] out T item)
         {
             switch (store)
             {
@@ -460,6 +488,13 @@ namespace Gratt
                     store = Init;
                     return true;
             }
+        }
+
+        public override ITokenStream<T> Expand((bool, T) store, IEnumerator<T> enumerator)
+        {
+            var stream = TokenStream.Create(enumerator, TwoTokenBuffer<T>.Instance);
+            var (_, token) = store;
+            return stream.Unread(token);
         }
     }
 
@@ -473,7 +508,7 @@ namespace Gratt
 
         public override TwoTokens<T> Init => default;
 
-        public override bool TryEnqueue(ref TwoTokens<T> store, T item)
+        public override bool TryPush(ref TwoTokens<T> store, T item)
         {
             switch (store)
             {
@@ -482,14 +517,14 @@ namespace Gratt
                     store.First = item;
                     return true;
                 case (CountOf2.One, var first, _):
-                    store = new(CountOf2.Two, first, item);
+                    store = new(CountOf2.Two, item, first);
                     return true;
                 default:
                     return false;
             }
         }
 
-        public override bool TryDequeue(ref TwoTokens<T> store, [MaybeNullWhen(false)] out T item)
+        public override bool TryPop(ref TwoTokens<T> store, [MaybeNullWhen(false)] out T item)
         {
             switch (store)
             {
@@ -497,28 +532,30 @@ namespace Gratt
                     item = first;
                     store = Init;
                     return true;
-                case (CountOf2.Two, _, var second):
-                    item = second;
+                case (CountOf2.Two, var first, var second):
+                    item = first;
+                    store = Init;
                     store.Count = CountOf2.One;
-                    store.Second = default!;
+                    store.First = second;
                     return true;
                 default:
                     item = default;
                     return false;
             }
         }
+
+        public override ITokenStream<T> Expand(TwoTokens<T> store, IEnumerator<T> enumerator) =>
+            throw new InvalidOperationException();
     }
 
     partial interface ITokenStream<T> : IDisposable
     {
         bool TryRead([MaybeNullWhen(false)] out T result);
-        void Unread(T item);
+        ITokenStream<T> Unread(T item);
     }
 
     static partial class Extensions
     {
-        public static ILexer<T> ToLexer<T>(this IEnumerable<T> tokens) => new Lexer<T, TwoTokens<T>>(tokens, TwoTokenBuffer<T>.Instance);
-
         public static bool TryPeek<T>(this ITokenStream<T> source, [MaybeNullWhen(false)] out T result)
         {
             if (!source.TryRead(out result))

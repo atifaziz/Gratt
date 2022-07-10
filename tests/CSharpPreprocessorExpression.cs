@@ -20,7 +20,6 @@ namespace CSharp.Preprocessing
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using Gratt;
     using Token = Token<TokenKind>;
     using Parser = Gratt.Parser<ParseContext, TokenKind, Token<TokenKind>, Precedence, bool>;
     using PrefixParselet = System.Func<Token<TokenKind>, Gratt.Parser<ParseContext, TokenKind, Token<TokenKind>, Precedence, bool>, bool>;
@@ -45,10 +44,9 @@ namespace CSharp.Preprocessing
                 TokenKind.Eoi, t => new SyntaxErrorException($"Unexpected <{t.Kind}> token at offset {t.Offset}."),
                 (_, token, _) => Spec.Instance.Prefix(token),
                 (kind, _, _) => Spec.Instance.Infix(kind),
-                Scanner.Scan(expression)
-                       .Where(t => t.Kind != TokenKind.WhiteSpace)
-                       .Select(t => (t.Kind, t))
-                       .ToLexer());
+                from t in Scanner.Scan(expression)
+                where t.Kind != TokenKind.WhiteSpace
+                select (t.Kind, t));
     }
 
     sealed class ParseContext
