@@ -211,7 +211,7 @@ namespace Gratt
                 IEnumerable<(TKind, TToken)> tokens)
         {
             using var e = tokens.GetEnumerator();
-            using var ts = TokenStream.Create(e, SingleTokenBuffer<(TKind, TToken)>.Instance);
+            using var ts = TokenStream.Create(e, OneTokenStackOps<(TKind, TToken)>.Instance);
             var parser =
                 new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
                                                                         precedenceComparer,
@@ -410,20 +410,21 @@ namespace Gratt
 
     static class TokenStream
     {
-        public static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer) =>
-            new Impl<T, TBuffer>(enumerator, buffer);
+        public static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator,
+                                                         StoreStackOps<ITokenStream<T>, TBuffer, T> stackOps) =>
+            new Impl<T, TBuffer>(enumerator, stackOps);
 
         sealed class Impl<T, TBuffer> : ITokenStream<T>
         {
-            TBuffer _next;
-            readonly TokenBuffer<TBuffer, T> _buffer;
+            TBuffer _buffer;
+            readonly StoreStackOps<ITokenStream<T>, TBuffer, T> _stackOps;
             IEnumerator<T>? _enumerator;
 
-            public Impl(IEnumerator<T> enumerator, TokenBuffer<TBuffer, T> buffer)
+            public Impl(IEnumerator<T> enumerator, StoreStackOps<ITokenStream<T>, TBuffer, T> stackOps)
             {
                 _enumerator = enumerator;
-                _buffer = buffer;
-                _next = _buffer.Default;
+                _stackOps = stackOps;
+                _buffer = _stackOps.Default;
             }
 
             public void Dispose() => _enumerator?.Dispose();
@@ -436,7 +437,7 @@ namespace Gratt
                     return false;
                 }
 
-                if (_buffer.TryPop(ref _next, out result))
+                if (_stackOps.TryPop(ref _buffer, out result))
                     return true;
 
                 if (!enumerator.MoveNext())
@@ -453,22 +454,24 @@ namespace Gratt
 
             public ITokenStream<T> Unread(T item)
                 => _enumerator is null ? throw new InvalidOperationException()
-                 : _buffer.TryPush(ref _next, item) ? this
-                 : _buffer.Expand(_next, _enumerator).Unread(item);
+                 : _stackOps.TryPush(ref _buffer, item) ? this
+                 : _stackOps.Grow(_buffer, _enumerator).Unread(item);
         }
     }
 
-    abstract class TokenBuffer<TStore, T>
+    abstract class StoreStackOps<TContainer, TStore, T>
     {
         public abstract TStore Default { get; }
         public abstract bool TryPush(ref TStore store, T item);
         public abstract bool TryPop(ref TStore store, [MaybeNullWhen(false)] out T item);
-        public abstract ITokenStream<T> Expand(TStore store, IEnumerator<T> enumerator);
+        public abstract TContainer Grow(TStore store, IEnumerator<T> enumerator);
     }
 
-    sealed class SingleTokenBuffer<T> : TokenBuffer<(bool, T), T>
+    sealed class OneTokenStackOps<T> : StoreStackOps<ITokenStream<T>, (bool, T), T>
     {
-        public static readonly SingleTokenBuffer<T> Instance = new();
+        public static readonly OneTokenStackOps<T> Instance = new();
+
+        OneTokenStackOps() { }
 
         public override (bool, T) Default => default;
 
@@ -495,25 +498,27 @@ namespace Gratt
             }
         }
 
-        public override ITokenStream<T> Expand((bool, T) store, IEnumerator<T> enumerator)
+        public override ITokenStream<T> Grow((bool, T) store, IEnumerator<T> enumerator)
         {
-            var stream = TokenStream.Create(enumerator, TwoTokenBuffer<T>.Instance);
+            var stream = TokenStream.Create(enumerator, TwoTokenStackOps<T>.Instance);
             var (_, token) = store;
             return stream.Unread(token);
         }
     }
 
-    enum CountOf2 { Zero, One, Two }
-
-    record struct TwoTokens<T>(CountOf2 Count, T First, T Second);
-
-    sealed class TwoTokenBuffer<T> : TokenBuffer<TwoTokens<T>, T>
+    sealed class TwoTokenStackOps<T> : StoreStackOps<ITokenStream<T>, TwoTokenStackOps<T>.Store, T>
     {
-        public static readonly TwoTokenBuffer<T> Instance = new();
+        public enum CountOf2 { Zero, One, Two }
 
-        public override TwoTokens<T> Default => default;
+        public record struct Store(CountOf2 Count, T First, T Second);
 
-        public override bool TryPush(ref TwoTokens<T> store, T item)
+        public static readonly TwoTokenStackOps<T> Instance = new();
+
+        TwoTokenStackOps() { }
+
+        public override Store Default => default;
+
+        public override bool TryPush(ref Store store, T item)
         {
             switch (store)
             {
@@ -529,7 +534,7 @@ namespace Gratt
             }
         }
 
-        public override bool TryPop(ref TwoTokens<T> store, [MaybeNullWhen(false)] out T item)
+        public override bool TryPop(ref Store store, [MaybeNullWhen(false)] out T item)
         {
             switch (store)
             {
@@ -549,7 +554,7 @@ namespace Gratt
             }
         }
 
-        public override ITokenStream<T> Expand(TwoTokens<T> store, IEnumerator<T> enumerator) =>
+        public override ITokenStream<T> Grow(Store store, IEnumerator<T> enumerator) =>
             throw new InvalidOperationException();
     }
 }
