@@ -211,7 +211,7 @@ namespace Gratt
                 IEnumerable<(TKind, TToken)> tokens)
         {
             using var e = tokens.GetEnumerator();
-            using var ts = TokenStream.Create(e, OneTokenStackOps<(TKind, TToken)>.Instance);
+            using var ts = TokenStream.Create(e);
             var parser =
                 new Parser<TState, TKind, TToken, TPrecedence, TResult>(state,
                                                                         precedenceComparer,
@@ -410,8 +410,11 @@ namespace Gratt
 
     static class TokenStream
     {
-        public static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator,
-                                                         StoreStackOps<ITokenStream<T>, TBuffer, T> stackOps) =>
+        public static ITokenStream<T> Create<T>(IEnumerator<T> enumerator) =>
+            new Impl<T, (bool, T)>(enumerator, OneTokenStackOps<T>.Instance);
+
+        static ITokenStream<T> Create<T, TBuffer>(IEnumerator<T> enumerator,
+                                                  StoreStackOps<ITokenStream<T>, TBuffer, T> stackOps) =>
             new Impl<T, TBuffer>(enumerator, stackOps);
 
         sealed class Impl<T, TBuffer> : ITokenStream<T>
@@ -457,104 +460,104 @@ namespace Gratt
                  : _stackOps.TryPush(ref _buffer, item) ? this
                  : _stackOps.Grow(_buffer, _enumerator).Unread(item);
         }
-    }
 
-    abstract class StoreStackOps<TContainer, TStore, T>
-    {
-        public abstract TStore Default { get; }
-        public abstract bool TryPush(ref TStore store, T item);
-        public abstract bool TryPop(ref TStore store, [MaybeNullWhen(false)] out T item);
-        public abstract TContainer Grow(TStore store, IEnumerator<T> enumerator);
-    }
-
-    sealed class OneTokenStackOps<T> : StoreStackOps<ITokenStream<T>, (bool, T), T>
-    {
-        public static readonly OneTokenStackOps<T> Instance = new();
-
-        OneTokenStackOps() { }
-
-        public override (bool, T) Default => default;
-
-        public override bool TryPush(ref (bool, T) store, T item)
+        abstract class StoreStackOps<TContainer, TStore, T>
         {
-            if (store is (true, _))
-                return false;
-
-            store = (true, item);
-            return true;
+            public abstract TStore Default { get; }
+            public abstract bool TryPush(ref TStore store, T item);
+            public abstract bool TryPop(ref TStore store, [MaybeNullWhen(false)] out T item);
+            public abstract TContainer Grow(TStore store, IEnumerator<T> enumerator);
         }
 
-        public override bool TryPop(ref (bool, T) store, [MaybeNullWhen(false)] out T item)
+        sealed class OneTokenStackOps<T> : StoreStackOps<ITokenStream<T>, (bool, T), T>
         {
-            switch (store)
+            public static readonly OneTokenStackOps<T> Instance = new();
+
+            OneTokenStackOps() { }
+
+            public override (bool, T) Default => default;
+
+            public override bool TryPush(ref (bool, T) store, T item)
             {
-                case (false, _):
-                    item = default;
+                if (store is (true, _))
                     return false;
-                case (true, var some):
-                    item = some;
-                    store = Default;
-                    return true;
+
+                store = (true, item);
+                return true;
+            }
+
+            public override bool TryPop(ref (bool, T) store, [MaybeNullWhen(false)] out T item)
+            {
+                switch (store)
+                {
+                    case (false, _):
+                        item = default;
+                        return false;
+                    case (true, var some):
+                        item = some;
+                        store = Default;
+                        return true;
+                }
+            }
+
+            public override ITokenStream<T> Grow((bool, T) store, IEnumerator<T> enumerator)
+            {
+                var stream = Create(enumerator, TwoTokenStackOps<T>.Instance);
+                var (_, token) = store;
+                return stream.Unread(token);
             }
         }
 
-        public override ITokenStream<T> Grow((bool, T) store, IEnumerator<T> enumerator)
+        sealed class TwoTokenStackOps<T> : StoreStackOps<ITokenStream<T>, TwoTokenStackOps<T>.Store, T>
         {
-            var stream = TokenStream.Create(enumerator, TwoTokenStackOps<T>.Instance);
-            var (_, token) = store;
-            return stream.Unread(token);
-        }
-    }
+            public enum CountOf2 { Zero, One, Two }
 
-    sealed class TwoTokenStackOps<T> : StoreStackOps<ITokenStream<T>, TwoTokenStackOps<T>.Store, T>
-    {
-        public enum CountOf2 { Zero, One, Two }
+            public record struct Store(CountOf2 Count, T First, T Second);
 
-        public record struct Store(CountOf2 Count, T First, T Second);
+            public static readonly TwoTokenStackOps<T> Instance = new();
 
-        public static readonly TwoTokenStackOps<T> Instance = new();
+            TwoTokenStackOps() { }
 
-        TwoTokenStackOps() { }
+            public override Store Default => default;
 
-        public override Store Default => default;
-
-        public override bool TryPush(ref Store store, T item)
-        {
-            switch (store)
+            public override bool TryPush(ref Store store, T item)
             {
-                case (CountOf2.Zero, _, _):
-                    store.Count = CountOf2.One;
-                    store.First = item;
-                    return true;
-                case (CountOf2.One, var first, _):
-                    store = new(CountOf2.Two, item, first);
-                    return true;
-                default:
-                    return false;
+                switch (store)
+                {
+                    case (CountOf2.Zero, _, _):
+                        store.Count = CountOf2.One;
+                        store.First = item;
+                        return true;
+                    case (CountOf2.One, var first, _):
+                        store = new(CountOf2.Two, item, first);
+                        return true;
+                    default:
+                        return false;
+                }
             }
-        }
 
-        public override bool TryPop(ref Store store, [MaybeNullWhen(false)] out T item)
-        {
-            switch (store)
+            public override bool TryPop(ref Store store, [MaybeNullWhen(false)] out T item)
             {
-                case (CountOf2.One, var first, _):
-                    item = first;
-                    store = Default;
-                    return true;
-                case (CountOf2.Two, var first, var second):
-                    item = first;
-                    store = Default;
-                    store.Count = CountOf2.One;
-                    store.First = second;
-                    return true;
-                default:
-                    item = default;
-                    return false;
+                switch (store)
+                {
+                    case (CountOf2.One, var first, _):
+                        item = first;
+                        store = Default;
+                        return true;
+                    case (CountOf2.Two, var first, var second):
+                        item = first;
+                        store = Default;
+                        store.Count = CountOf2.One;
+                        store.First = second;
+                        return true;
+                    default:
+                        item = default;
+                        return false;
+                }
             }
-        }
 
-        public override ITokenStream<T> Grow(Store store, IEnumerator<T> enumerator) =>
-            throw new InvalidOperationException();
+            public override ITokenStream<T> Grow(Store store, IEnumerator<T> enumerator) =>
+                throw new InvalidOperationException();
+        }
     }
 }
