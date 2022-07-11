@@ -423,7 +423,7 @@ namespace Gratt
             {
                 _enumerator = enumerator;
                 _buffer = buffer;
-                _next = _buffer.Init;
+                _next = _buffer.Default;
             }
 
             public void Dispose() => _enumerator?.Dispose();
@@ -460,7 +460,7 @@ namespace Gratt
 
     abstract class TokenBuffer<TStore, T>
     {
-        public abstract TStore Init { get; }
+        public abstract TStore Default { get; }
         public abstract bool TryPush(ref TStore store, T item);
         public abstract bool TryPop(ref TStore store, [MaybeNullWhen(false)] out T item);
         public abstract ITokenStream<T> Expand(TStore store, IEnumerator<T> enumerator);
@@ -470,7 +470,7 @@ namespace Gratt
     {
         public static readonly SingleTokenBuffer<T> Instance = new();
 
-        public override (bool, T) Init => default;
+        public override (bool, T) Default => default;
 
         public override bool TryPush(ref (bool, T) store, T item)
         {
@@ -490,7 +490,7 @@ namespace Gratt
                     return false;
                 case (true, var some):
                     item = some;
-                    store = Init;
+                    store = Default;
                     return true;
             }
         }
@@ -511,7 +511,7 @@ namespace Gratt
     {
         public static readonly TwoTokenBuffer<T> Instance = new();
 
-        public override TwoTokens<T> Init => default;
+        public override TwoTokens<T> Default => default;
 
         public override bool TryPush(ref TwoTokens<T> store, T item)
         {
@@ -535,11 +535,11 @@ namespace Gratt
             {
                 case (CountOf2.One, var first, _):
                     item = first;
-                    store = Init;
+                    store = Default;
                     return true;
                 case (CountOf2.Two, var first, var second):
                     item = first;
-                    store = Init;
+                    store = Default;
                     store.Count = CountOf2.One;
                     store.First = second;
                     return true;
