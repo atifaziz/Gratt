@@ -18,7 +18,6 @@ namespace Gratt
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using Unit = System.ValueTuple;
 
@@ -564,7 +563,6 @@ namespace Gratt
             public override ITokenStream<T> Grow(Store store, IEnumerator<T> enumerator)
             {
                 var stream = Create(enumerator, MultiTokenStackOps<T>.Instance);
-                Debug.Assert(store.Count == CountOf2.Two);
                 var (first, second) = (Pop(ref store), Pop(ref store));
                 stream.Unread(second);
                 stream.Unread(first);
