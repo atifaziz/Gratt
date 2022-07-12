@@ -18,6 +18,7 @@ namespace Gratt
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using Unit = System.ValueTuple;
 
@@ -361,7 +362,23 @@ namespace Gratt
                     return (kind2, token2);
                 }
                 default:
-                    throw new InvalidOperationException();
+                {
+                    var stack = new Stack<(TKind, TToken)>(offset + 1);
+                    while (true)
+                    {
+                        var read = Read();
+                        stack.Push(read);
+                        if (offset-- == 0)
+                        {
+                            while (stack.Count > 0)
+                            {
+                                var (kind, token) = stack.Pop();
+                                Unread(kind, token);
+                            }
+                            return read;
+                        }
+                    }
+                }
             }
         }
 
@@ -521,6 +538,9 @@ namespace Gratt
                 }
             }
 
+            T Pop(ref Store store) =>
+                TryPop(ref store, out var popped) ? popped : throw new InvalidOperationException();
+
             public override bool TryPop(ref Store store, [MaybeNullWhen(false)] out T item)
             {
                 switch (store)
@@ -541,8 +561,46 @@ namespace Gratt
                 }
             }
 
-            public override ITokenStream<T> Grow(Store store, IEnumerator<T> enumerator) =>
-                throw new InvalidOperationException();
+            public override ITokenStream<T> Grow(Store store, IEnumerator<T> enumerator)
+            {
+                var stream = Create(enumerator, MultiTokenStackOps<T>.Instance);
+                Debug.Assert(store.Count == CountOf2.Two);
+                var (first, second) = (Pop(ref store), Pop(ref store));
+                stream.Unread(second);
+                stream.Unread(first);
+                return stream;
+            }
+        }
+
+        sealed class MultiTokenStackOps<T> : StoreStackOps<ITokenStream<T>, Stack<T>?, T>
+        {
+            public static readonly MultiTokenStackOps<T> Instance = new();
+
+            MultiTokenStackOps() { }
+
+            public override Stack<T>? Default => default;
+
+            public override bool TryPush(ref Stack<T>? store, T item)
+            {
+                store ??= new Stack<T>();
+                store.Push(item);
+                return true;
+            }
+
+            public override bool TryPop(ref Stack<T>? store, [MaybeNullWhen(false)] out T item)
+            {
+                if (store is not { Count: > 0 } stack)
+                {
+                    item = default;
+                    return false;
+                }
+
+                item = stack.Pop();
+                return true;
+            }
+
+            public override ITokenStream<T> Grow(Stack<T>? store, IEnumerator<T> enumerator) =>
+                throw new NotImplementedException(); // Should never get here!
         }
     }
 }
