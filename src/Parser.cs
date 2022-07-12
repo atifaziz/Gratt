@@ -361,23 +361,7 @@ namespace Gratt
                     return (kind2, token2);
                 }
                 default:
-                {
-                    var stack = new Stack<(TKind, TToken)>(offset + 1);
-                    while (true)
-                    {
-                        var read = Read();
-                        stack.Push(read);
-                        if (offset-- == 0)
-                        {
-                            while (stack.Count > 0)
-                            {
-                                var (kind, token) = stack.Pop();
-                                Unread(kind, token);
-                            }
-                            return read;
-                        }
-                    }
-                }
+                    throw new InvalidOperationException();
             }
         }
 
