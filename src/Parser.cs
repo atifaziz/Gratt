@@ -398,6 +398,7 @@ namespace Gratt
         /// </summary>
         /// <param name="kind">The kind of token.</param>
         /// <param name="token">The token.</param>
+
         public void Unread(TKind kind, TToken token) =>
             _lexer = _lexer.Unread((kind, token));
     }
